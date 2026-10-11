@@ -1,0 +1,69 @@
+# Dashboard-Karte "PV-Anlage" – nur Bordmittel, keine HACS-Karten nötig.
+# Einfügen: Dashboard bearbeiten -> Karte hinzufügen -> "Manuell" -> diesen Inhalt einfügen.
+type: vertical-stack
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        name: Batterie
+        entity: sensor.growatt_batterie_soc
+        min: 0
+        max: 100
+        severity:
+          green: 50
+          yellow: 20
+          red: 0
+      - type: gauge
+        name: PV
+        entity: sensor.growatt_pv_leistung
+        min: 0
+        max: 6500
+      - type: gauge
+        name: Netz
+        entity: sensor.growatt_netzleistung
+        min: -5000
+        max: 5000
+        needle: true
+  - type: entities
+    title: PV-Anlage
+    entities:
+      - entity: sensor.growatt_status
+        name: Status
+      - entity: sensor.growatt_pv_leistung
+        name: PV-Erzeugung
+      - entity: sensor.growatt_hausverbrauch
+        name: Hausverbrauch
+      - entity: sensor.growatt_batterieleistung
+        name: Batterie (+ entladen / − laden)
+      - entity: sensor.growatt_netzleistung
+        name: Netz (+ Bezug / − Einspeisung)
+      - entity: sensor.growatt_pv_ueberschuss
+        name: PV-Überschuss
+      - type: divider
+      - entity: sensor.growatt_pv_energie_heute_gesamt
+        name: PV heute
+      - entity: sensor.growatt_hausverbrauch_energie_heute
+        name: Verbrauch heute
+      - entity: sensor.growatt_einspeisung_energie_heute
+        name: Einspeisung heute
+      - entity: sensor.growatt_netzbezug_energie_heute
+        name: Netzbezug heute
+      - type: divider
+      - entity: sensor.growatt_temperatur_wechselrichter
+        name: Temperatur WR
+      - entity: sensor.growatt_netzmessung
+        name: Netzmessung über
+      - entity: binary_sensor.growatt_zaehlerkommunikation_gestoert
+        name: Zählerkommunikation gestört
+  - type: history-graph
+    title: Leistung (24 h)
+    hours_to_show: 24
+    entities:
+      - entity: sensor.growatt_pv_leistung
+        name: PV
+      - entity: sensor.growatt_hausverbrauch
+        name: Haus
+      - entity: sensor.growatt_batterieleistung
+        name: Batterie
+      - entity: sensor.growatt_netzleistung
+        name: Netz

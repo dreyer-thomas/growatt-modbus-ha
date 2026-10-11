@@ -1,0 +1,162 @@
+# =============================================================================
+# Growatt SPH – Backup-Reserve der Batterie je nach Jahreszeit
+# =============================================================================
+# Ablage: /config/packages/growatt_backup_soc.yaml  (zusätzlich zu growatt_sph.yaml)
+#
+# Schreibt EIN Register: Holding 608 "Load First Stop-SOC".
+# Am Netz entlädt der Wechselrichter die Batterie nur bis zu diesem Wert.
+# Der Rest bleibt für den Notstrombetrieb (EPS) bei Netzausfall reserviert.
+#
+# Schutzmechanismen:
+#   - Schreiben erst nach manueller Freigabe (input_boolean, Standard: aus)
+#   - Wert wird auf 10–100 % begrenzt
+#   - Geschrieben wird nur, wenn sich der Wert wirklich ändert
+#     (Holding-Register liegen im EEPROM -> wenige Schreibvorgänge pro Jahr)
+#   - Nach dem Schreiben wird zurückgelesen; bei Abweichung kommt eine Meldung
+#
+# VOR DER FREIGABE: in Home Assistant den Sensor "Growatt Entladestopp SoC"
+# mit dem Wert in der Growatt-App vergleichen (Einstellungen -> Lastvorrang /
+# "Load First" -> Entladestopp-SOC). Nur wenn beide übereinstimmen, ist
+# Register 608 auf deinem Gerät richtig belegt.
+# =============================================================================
+
+input_boolean:
+  growatt_schreiben_freigegeben:
+    name: Growatt Schreiben freigegeben
+    icon: mdi:lock-open-variant
+
+input_select:
+  growatt_backup_modus:
+    name: Growatt Backup-Modus
+    icon: mdi:calendar-sync
+    options:
+      - Automatisch
+      - Sommer
+      - Winter
+
+input_number:
+  growatt_backup_soc_sommer:
+    name: Growatt Backup-Reserve Sommer
+    icon: mdi:battery-30
+    min: 10
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+
+  growatt_backup_soc_winter:
+    name: Growatt Backup-Reserve Winter
+    icon: mdi:battery-60
+    min: 10
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+
+template:
+  - sensor:
+      - name: Growatt Backup-Reserve Soll
+        unique_id: growatt_backup_soc_target
+        unit_of_measurement: "%"
+        icon: mdi:battery-lock
+        # Winter = Oktober bis März. Monate hier anpassen, falls gewünscht.
+        state: >
+          {% set winter_monate = [10, 11, 12, 1, 2, 3] %}
+          {% set modus = states('input_select.growatt_backup_modus') %}
+          {% set winter = modus == 'Winter'
+                          or (modus == 'Automatisch' and now().month in winter_monate) %}
+          {{ (states('input_number.growatt_backup_soc_winter') if winter
+              else states('input_number.growatt_backup_soc_sommer')) | int(0) }}
+        attributes:
+          saison: >
+            {% set winter_monate = [10, 11, 12, 1, 2, 3] %}
+            {% set modus = states('input_select.growatt_backup_modus') %}
+            {{ 'Winter' if modus == 'Winter'
+               or (modus == 'Automatisch' and now().month in winter_monate) else 'Sommer' }}
+        availability: >
+          {{ has_value('input_number.growatt_backup_soc_winter')
+             and has_value('input_number.growatt_backup_soc_sommer') }}
+
+script:
+  growatt_backup_soc_setzen:
+    alias: Growatt Backup-Reserve setzen
+    icon: mdi:battery-sync
+    mode: queued
+    fields:
+      soc:
+        name: Backup-Reserve
+        description: Entladestopp-SoC in Prozent (10–100)
+        required: true
+        selector:
+          number:
+            min: 10
+            max: 100
+            step: 5
+            unit_of_measurement: "%"
+    sequence:
+      - variables:
+          ziel: "{{ [[soc | int(0), 10] | max, 100] | min }}"
+          ist: "{{ states('sensor.growatt_entladestopp_soc') | int(-1) }}"
+      - condition: state
+        entity_id: input_boolean.growatt_schreiben_freigegeben
+        state: "on"
+      - condition: template
+        value_template: "{{ ist >= 0 and ziel != ist }}"
+      - action: modbus.write_register
+        data:
+          hub: growatt
+          slave: 1
+          address: 608
+          value: "{{ ziel }}"
+      - delay: "00:00:05"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.growatt_entladestopp_soc
+      - delay: "00:00:05"
+      - if:
+          - condition: template
+            value_template: "{{ states('sensor.growatt_entladestopp_soc') | int(-1) != ziel }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              notification_id: growatt_backup_soc_fehler
+              title: Growatt Backup-Reserve
+              message: >
+                Schreiben von {{ ziel }} % hat nicht geklappt – der Wechselrichter meldet
+                {{ states('sensor.growatt_entladestopp_soc') }} %.
+        else:
+          - action: logbook.log
+            data:
+              name: Growatt
+              message: "Backup-Reserve von {{ ist }} % auf {{ ziel }} % geändert"
+              entity_id: sensor.growatt_entladestopp_soc
+
+automation:
+  - id: growatt_backup_soc_saisonal
+    alias: Growatt Backup-Reserve nach Jahreszeit
+    description: >
+      Hält den Entladestopp-SoC des Wechselrichters auf dem Sollwert
+      (Sommer/Winter). Schreibt nur, wenn Soll und Ist abweichen.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.growatt_backup_reserve_soll
+      - trigger: time
+        at: "03:15:00"
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.growatt_schreiben_freigegeben
+        state: "on"
+    actions:
+      - delay: "00:00:30"        # nach Neustart erst Messwerte abwarten
+      - condition: template
+        value_template: >
+          {{ has_value('sensor.growatt_backup_reserve_soll')
+             and has_value('sensor.growatt_entladestopp_soc')
+             and states('sensor.growatt_backup_reserve_soll') | int
+                 != states('sensor.growatt_entladestopp_soc') | int }}
+      - action: script.growatt_backup_soc_setzen
+        data:
+          soc: "{{ states('sensor.growatt_backup_reserve_soll') | int }}"

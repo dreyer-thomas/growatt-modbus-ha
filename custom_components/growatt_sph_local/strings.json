@@ -1,0 +1,188 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Growatt SPH",
+        "description": "IP address of the RS485-to-Ethernet gateway (mode “Modbus TCP ⇄ RTU”). The inverter is only read during setup.",
+        "data": {
+          "host": "IP address / host name",
+          "port": "Port",
+          "slave": "Inverter Modbus address"
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "data": {
+          "host": "IP address / host name",
+          "port": "Port",
+          "slave": "Inverter Modbus address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach the gateway – check IP and port.",
+      "no_response": "Gateway reachable but the inverter does not answer – check A/B wiring, port, 9600 8N1 and “Modbus TCP ⇄ RTU” mode.",
+      "not_hybrid": "The device answers but does not look like a Growatt hybrid (SPH) inverter."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured.",
+      "reconfigure_successful": "Connection updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Enable write access only after the values in Home Assistant have matched the Growatt app for a few days. It allows setting the backup reserve and holding the battery.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "allow_write": "Allow writing to the inverter"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "waiting": "Waiting",
+          "normal": "Normal",
+          "fault": "Fault",
+          "flash": "Firmware update",
+          "normal_hybrid": "Normal (hybrid)",
+          "unknown": "Unknown"
+        }
+      },
+      "pv_power": {
+        "name": "PV power"
+      },
+      "pv1_voltage": {
+        "name": "PV1 voltage"
+      },
+      "pv1_current": {
+        "name": "PV1 current"
+      },
+      "pv1_power": {
+        "name": "PV1 power"
+      },
+      "pv2_voltage": {
+        "name": "PV2 voltage"
+      },
+      "pv2_current": {
+        "name": "PV2 current"
+      },
+      "pv2_power": {
+        "name": "PV2 power"
+      },
+      "ac_power": {
+        "name": "Inverter AC power"
+      },
+      "grid_frequency": {
+        "name": "Grid frequency"
+      },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
+      "inverter_temperature": {
+        "name": "Inverter temperature"
+      },
+      "battery_soc": {
+        "name": "Battery state of charge"
+      },
+      "battery_charge_power": {
+        "name": "Battery charge power"
+      },
+      "battery_discharge_power": {
+        "name": "Battery discharge power"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "battery_temperature": {
+        "name": "Battery temperature"
+      },
+      "grid_import_power": {
+        "name": "Grid import"
+      },
+      "grid_export_power": {
+        "name": "Grid export"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "load_power": {
+        "name": "House consumption"
+      },
+      "pv_energy_total": {
+        "name": "PV energy total"
+      },
+      "grid_import_energy_total": {
+        "name": "Grid import energy total"
+      },
+      "grid_export_energy_total": {
+        "name": "Grid export energy total"
+      },
+      "battery_discharge_energy_total": {
+        "name": "Battery discharge energy total"
+      },
+      "battery_charge_energy_total": {
+        "name": "Battery charge energy total"
+      },
+      "load_energy_total": {
+        "name": "House consumption energy total"
+      },
+      "pv_energy_today": {
+        "name": "PV energy today"
+      },
+      "grid_import_energy_today": {
+        "name": "Grid import today"
+      },
+      "grid_export_energy_today": {
+        "name": "Grid export today"
+      },
+      "load_energy_today": {
+        "name": "House consumption today"
+      },
+      "grid_measurement": {
+        "name": "Grid measurement via",
+        "state": {
+          "wired_ct": "Wired CT",
+          "wireless_ct": "Wireless CT",
+          "meter": "Meter",
+          "unknown": "Unknown"
+        }
+      },
+      "battery_first_window": {
+        "name": "Battery first window 1"
+      }
+    },
+    "binary_sensor": {
+      "meter_com_loss": {
+        "name": "Meter communication lost"
+      },
+      "ac_charge": {
+        "name": "Battery AC charging enabled"
+      }
+    },
+    "number": {
+      "backup_reserve": {
+        "name": "Backup reserve"
+      }
+    },
+    "switch": {
+      "battery_hold": {
+        "name": "Hold battery"
+      }
+    }
+  }
+}

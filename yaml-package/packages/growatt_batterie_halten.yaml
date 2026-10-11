@@ -1,0 +1,202 @@
+# =============================================================================
+# Growatt SPH – Hausbatterie halten, während das Auto lädt
+# =============================================================================
+# Ablage: /config/packages/growatt_batterie_halten.yaml
+# Voraussetzungen:
+#   - growatt_sph.yaml und growatt_backup_soc.yaml (Freigabe-Schalter) sind aktiv
+#   - Tesla-Wall-Connector-Integration in HA (Gen 3, lokal, eingebaut)
+#
+# Prinzip (wie evcc "batterymode: hold"):
+#   Battery-First-Zeitfenster 1 wird EINMALIG auf 00:00–23:59 gestellt.
+#   Danach wird nur noch der Aktiv-Schalter (Register 1102) umgelegt:
+#     1102 = 1  -> Battery First: Batterie entlädt nicht, PV lädt sie weiter
+#     1102 = 0  -> normaler Betrieb (Load First)
+#   AC-Laden (1092) muss dabei AUS sein, sonst lädt die Batterie aus dem Netz.
+#
+# Pro Ladevorgang entstehen genau zwei Schreibzugriffe (ein/aus).
+#
+# >>> Entität des Wall Connectors ggf. anpassen (3 Stellen in der Automation) <<<
+#
+# Hinweis: Schaltet man "Growatt Schreiben freigegeben" aus, während die Batterie
+# gehalten wird, bleibt sie gehalten -> vorher "Batterie halten" ausschalten.
+# =============================================================================
+
+input_boolean:
+  growatt_batterie_halten_autoladen:
+    name: Batterie halten beim Autoladen
+    icon: mdi:car-battery
+
+script:
+  # ---------------------------------------------------------------------------
+  # Einmalig ausführen (nach Freigabe): Zeitfenster 1 auf 00:00–23:59, inaktiv
+  # ---------------------------------------------------------------------------
+  growatt_zeitfenster_einrichten:
+    alias: Growatt Battery-First-Zeitfenster einrichten (einmalig)
+    icon: mdi:clock-edit
+    mode: single
+    sequence:
+      - condition: state
+        entity_id: input_boolean.growatt_schreiben_freigegeben
+        state: "on"
+      # Start, Ende, Aktiv müssen gemeinsam geschrieben werden (Function Code 16)
+      - action: modbus.write_register
+        data:
+          hub: growatt
+          slave: 1
+          address: 1100
+          value: [0, 5947, 0]      # 00:00, 23:59, inaktiv
+      - delay: "00:00:05"
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.growatt_battery_first_1_start
+            - sensor.growatt_battery_first_1_ende
+            - sensor.growatt_battery_first_1_aktiv_code
+      - delay: "00:00:05"
+      - action: persistent_notification.create
+        data:
+          notification_id: growatt_zeitfenster
+          title: Growatt Zeitfenster
+          message: >
+            Battery-First-Fenster 1 meldet jetzt
+            {{ states('sensor.growatt_battery_first_1_zeitfenster') }}
+            (erwartet 00:00–23:59).
+
+  # ---------------------------------------------------------------------------
+  # Halten ein/aus – schreibt nur, wenn sich etwas ändert
+  # ---------------------------------------------------------------------------
+  growatt_batterie_halten:
+    alias: Growatt Batterie halten
+    icon: mdi:battery-lock
+    mode: queued
+    fields:
+      halten:
+        name: Halten
+        required: true
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          soll: "{{ 1 if halten | bool else 0 }}"
+          ist: "{{ states('sensor.growatt_battery_first_1_aktiv_code') | int(-1) }}"
+          fenster_ok: >
+            {{ states('sensor.growatt_battery_first_1_start') | int(-1) == 0
+               and states('sensor.growatt_battery_first_1_ende') | int(-1) == 5947 }}
+      - condition: state
+        entity_id: input_boolean.growatt_schreiben_freigegeben
+        state: "on"
+      - condition: template
+        value_template: "{{ ist >= 0 and soll != ist }}"
+      - if:
+          - condition: template
+            value_template: "{{ soll == 1 and not fenster_ok }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              notification_id: growatt_batterie_halten
+              title: Growatt Batterie halten
+              message: >
+                Zeitfenster ist {{ states('sensor.growatt_battery_first_1_zeitfenster') }}
+                statt 00:00–23:59 – bitte zuerst das Skript
+                "Battery-First-Zeitfenster einrichten" ausführen.
+          - stop: Zeitfenster nicht eingerichtet
+      # Beim Einschalten sicherstellen, dass nicht aus dem Netz geladen wird
+      - if:
+          - condition: template
+            value_template: "{{ soll == 1 and states('sensor.growatt_ac_laden_code') | int(0) != 0 }}"
+        then:
+          - action: modbus.write_register
+            data:
+              hub: growatt
+              slave: 1
+              address: 1092
+              value: 0
+          - delay: "00:00:02"
+      - action: modbus.write_register
+        data:
+          hub: growatt
+          slave: 1
+          address: 1102
+          value: "{{ soll }}"
+      - delay: "00:00:05"
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.growatt_battery_first_1_aktiv_code
+            - sensor.growatt_ac_laden_code
+      - delay: "00:00:05"
+      - if:
+          - condition: template
+            value_template: "{{ states('sensor.growatt_battery_first_1_aktiv_code') | int(-1) != soll }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              notification_id: growatt_batterie_halten
+              title: Growatt Batterie halten
+              message: "Umschalten auf {{ 'Halten' if soll == 1 else 'Normal' }} hat nicht geklappt."
+        else:
+          - action: logbook.log
+            data:
+              name: Growatt
+              message: "{{ 'Batterie wird gehalten (Auto lädt)' if soll == 1 else 'Batterie wieder normal' }}"
+              entity_id: binary_sensor.growatt_batterie_wird_gehalten
+
+automation:
+  - id: growatt_batterie_halten_autoladen
+    alias: Growatt Batterie halten beim Autoladen
+    description: >
+      Solange der Wall Connector lädt, entlädt die Hausbatterie nicht ins Auto.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.tesla_wall_connector_contactor_closed   # <-- anpassen
+        to: "on"
+        for: "00:01:00"
+        id: start
+      - trigger: state
+        entity_id: binary_sensor.tesla_wall_connector_contactor_closed   # <-- anpassen
+        to: "off"
+        for: "00:05:00"
+        id: ende
+      - trigger: state
+        entity_id: input_boolean.growatt_batterie_halten_autoladen
+        to: "off"
+        id: ende
+      - trigger: homeassistant
+        event: start
+        id: abgleich
+    conditions:
+      - condition: state
+        entity_id: input_boolean.growatt_schreiben_freigegeben
+        state: "on"
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: start
+              - condition: state
+                entity_id: input_boolean.growatt_batterie_halten_autoladen
+                state: "on"
+            sequence:
+              - action: script.growatt_batterie_halten
+                data:
+                  halten: true
+          - conditions:
+              - condition: trigger
+                id: ende
+            sequence:
+              - action: script.growatt_batterie_halten
+                data:
+                  halten: false
+          # Nach HA-Neustart: Zustand mit dem Wechselrichter abgleichen,
+          # damit die Batterie nie "hängen bleibt"
+          - conditions:
+              - condition: trigger
+                id: abgleich
+            sequence:
+              - delay: "00:01:00"
+              - action: script.growatt_batterie_halten
+                data:
+                  halten: >
+                    {{ is_state('binary_sensor.tesla_wall_connector_contactor_closed', 'on')
+                       and is_state('input_boolean.growatt_batterie_halten_autoladen', 'on') }}

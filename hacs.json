@@ -1,0 +1,10 @@
+{
+  "name": "Growatt SPH (lokal)",
+  "render_readme": true,
+  "homeassistant": "2025.2.0",
+  "country": [
+    "DE",
+    "AT",
+    "CH"
+  ]
+}

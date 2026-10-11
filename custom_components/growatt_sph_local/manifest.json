@@ -1,0 +1,14 @@
+{
+  "domain": "growatt_sph_local",
+  "name": "Growatt SPH (lokal)",
+  "codeowners": [
+    "@dreyer-thomas"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/dreyer-thomas/growatt-modbus-ha",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/dreyer-thomas/growatt-modbus-ha/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

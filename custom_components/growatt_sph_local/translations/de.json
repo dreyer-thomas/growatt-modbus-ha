@@ -1,0 +1,188 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Growatt SPH verbinden",
+        "description": "IP-Adresse des RS485-LAN-Gateways (Modus „Modbus TCP ⇄ RTU“). Der Wechselrichter wird dabei nur gelesen.",
+        "data": {
+          "host": "IP-Adresse / Hostname",
+          "port": "Port",
+          "slave": "Modbus-Adresse des Wechselrichters"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbindung ändern",
+        "data": {
+          "host": "IP-Adresse / Hostname",
+          "port": "Port",
+          "slave": "Modbus-Adresse des Wechselrichters"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Gateway nicht erreichbar – IP und Port prüfen.",
+      "no_response": "Gateway erreichbar, aber der Wechselrichter antwortet nicht – A/B-Leitungen, Buchse, Baudrate 9600 8N1 und Modus „Modbus TCP ⇄ RTU“ prüfen.",
+      "not_hybrid": "Das Gerät antwortet, ist aber offenbar kein Growatt-Hybrid-/Speicherwechselrichter (SPH)."
+    },
+    "abort": {
+      "already_configured": "Dieser Wechselrichter ist bereits eingerichtet.",
+      "reconfigure_successful": "Verbindung aktualisiert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "description": "Schreibzugriff erst einschalten, wenn die Werte in Home Assistant einige Tage mit der Growatt-App übereinstimmen. Er erlaubt das Setzen der Backup-Reserve und das Halten der Batterie.",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "allow_write": "Schreibzugriff auf den Wechselrichter erlauben"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "waiting": "Warten",
+          "normal": "Normal",
+          "fault": "Fehler",
+          "flash": "Firmware-Update",
+          "normal_hybrid": "Normal (Hybrid)",
+          "unknown": "Unbekannt"
+        }
+      },
+      "pv_power": {
+        "name": "PV-Leistung"
+      },
+      "pv1_voltage": {
+        "name": "PV1 Spannung"
+      },
+      "pv1_current": {
+        "name": "PV1 Strom"
+      },
+      "pv1_power": {
+        "name": "PV1 Leistung"
+      },
+      "pv2_voltage": {
+        "name": "PV2 Spannung"
+      },
+      "pv2_current": {
+        "name": "PV2 Strom"
+      },
+      "pv2_power": {
+        "name": "PV2 Leistung"
+      },
+      "ac_power": {
+        "name": "AC-Leistung Wechselrichter"
+      },
+      "grid_frequency": {
+        "name": "Netzfrequenz"
+      },
+      "voltage_l1": {
+        "name": "Spannung L1"
+      },
+      "voltage_l2": {
+        "name": "Spannung L2"
+      },
+      "voltage_l3": {
+        "name": "Spannung L3"
+      },
+      "inverter_temperature": {
+        "name": "Temperatur Wechselrichter"
+      },
+      "battery_soc": {
+        "name": "Batterie Ladestand"
+      },
+      "battery_charge_power": {
+        "name": "Batterie Ladeleistung"
+      },
+      "battery_discharge_power": {
+        "name": "Batterie Entladeleistung"
+      },
+      "battery_power": {
+        "name": "Batterieleistung"
+      },
+      "battery_voltage": {
+        "name": "Batterie Spannung"
+      },
+      "battery_temperature": {
+        "name": "Batterie Temperatur"
+      },
+      "grid_import_power": {
+        "name": "Netzbezug"
+      },
+      "grid_export_power": {
+        "name": "Netzeinspeisung"
+      },
+      "grid_power": {
+        "name": "Netzleistung"
+      },
+      "load_power": {
+        "name": "Hausverbrauch"
+      },
+      "pv_energy_total": {
+        "name": "PV-Energie gesamt"
+      },
+      "grid_import_energy_total": {
+        "name": "Netzbezug Energie gesamt"
+      },
+      "grid_export_energy_total": {
+        "name": "Einspeisung Energie gesamt"
+      },
+      "battery_discharge_energy_total": {
+        "name": "Batterie Entladung gesamt"
+      },
+      "battery_charge_energy_total": {
+        "name": "Batterie Ladung gesamt"
+      },
+      "load_energy_total": {
+        "name": "Hausverbrauch Energie gesamt"
+      },
+      "pv_energy_today": {
+        "name": "PV-Energie heute"
+      },
+      "grid_import_energy_today": {
+        "name": "Netzbezug heute"
+      },
+      "grid_export_energy_today": {
+        "name": "Einspeisung heute"
+      },
+      "load_energy_today": {
+        "name": "Hausverbrauch heute"
+      },
+      "grid_measurement": {
+        "name": "Netzmessung über",
+        "state": {
+          "wired_ct": "Stromzange (Kabel)",
+          "wireless_ct": "Stromzange (Funk)",
+          "meter": "Zähler",
+          "unknown": "Unbekannt"
+        }
+      },
+      "battery_first_window": {
+        "name": "Battery-First-Zeitfenster 1"
+      }
+    },
+    "binary_sensor": {
+      "meter_com_loss": {
+        "name": "Zählerkommunikation gestört"
+      },
+      "ac_charge": {
+        "name": "Netzladen der Batterie aktiv"
+      }
+    },
+    "number": {
+      "backup_reserve": {
+        "name": "Backup-Reserve"
+      }
+    },
+    "switch": {
+      "battery_hold": {
+        "name": "Batterie halten"
+      }
+    }
+  }
+}

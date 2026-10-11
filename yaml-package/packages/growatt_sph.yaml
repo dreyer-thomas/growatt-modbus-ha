@@ -1,0 +1,631 @@
+# =============================================================================
+# Growatt SPH 5000TL3 BH-UP  ->  Home Assistant (Modbus TCP über RS485-Gateway)
+# =============================================================================
+# Ablage:   /config/packages/growatt_sph.yaml
+# Aktivieren in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Quelle der Register: Growatt "Modbus RTU Protocol" V1.20/V1.24 (Storage/SPH),
+# gegengeprüft mit evcc-Template "growatt-hybrid" und zwei HA-Integrationen
+# (siehe docs/register-map.md).
+#
+# NUR LESEND. Dieses Package schreibt nichts in den Wechselrichter.
+#
+# >>> Vor dem Einsatz anpassen: host (IP des Gateways) <<<
+# =============================================================================
+
+modbus:
+  - name: growatt
+    type: tcp
+    host: 192.168.178.60        # <-- IP des RS485-Ethernet-Gateways
+    port: 502
+    timeout: 5
+    delay: 2                    # Gateway nach Verbindungsaufbau kurz Zeit geben
+    message_wait_milliseconds: 50  # Pause zwischen Anfragen (RS485 @ 9600 Baud)
+
+    sensors:
+      # -----------------------------------------------------------------------
+      # Status
+      # -----------------------------------------------------------------------
+      - name: Growatt Status Code
+        unique_id: growatt_status_code
+        slave: 1
+        input_type: input
+        address: 0
+        data_type: uint16
+        scan_interval: 30
+
+      # -----------------------------------------------------------------------
+      # PV (DC-Seite) – alle 10 s
+      # -----------------------------------------------------------------------
+      - name: Growatt PV Leistung
+        unique_id: growatt_pv_power
+        slave: 1
+        input_type: input
+        address: 1
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt PV1 Spannung
+        unique_id: growatt_pv1_voltage
+        slave: 1
+        input_type: input
+        address: 3
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 30
+
+      - name: Growatt PV1 Strom
+        unique_id: growatt_pv1_current
+        slave: 1
+        input_type: input
+        address: 4
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: A
+        device_class: current
+        state_class: measurement
+        scan_interval: 30
+
+      - name: Growatt PV1 Leistung
+        unique_id: growatt_pv1_power
+        slave: 1
+        input_type: input
+        address: 5
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt PV2 Spannung
+        unique_id: growatt_pv2_voltage
+        slave: 1
+        input_type: input
+        address: 7
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 30
+
+      - name: Growatt PV2 Strom
+        unique_id: growatt_pv2_current
+        slave: 1
+        input_type: input
+        address: 8
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: A
+        device_class: current
+        state_class: measurement
+        scan_interval: 30
+
+      - name: Growatt PV2 Leistung
+        unique_id: growatt_pv2_power
+        slave: 1
+        input_type: input
+        address: 9
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      # -----------------------------------------------------------------------
+      # AC-Ausgang des Wechselrichters
+      # -----------------------------------------------------------------------
+      - name: Growatt AC Leistung
+        unique_id: growatt_ac_power
+        slave: 1
+        input_type: input
+        address: 35
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt Netzfrequenz
+        unique_id: growatt_grid_frequency
+        slave: 1
+        input_type: input
+        address: 37
+        data_type: uint16
+        scale: 0.01
+        precision: 2
+        unit_of_measurement: Hz
+        device_class: frequency
+        state_class: measurement
+        scan_interval: 60
+
+      - name: Growatt Spannung L1
+        unique_id: growatt_voltage_l1
+        slave: 1
+        input_type: input
+        address: 38
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 60
+
+      - name: Growatt Spannung L2
+        unique_id: growatt_voltage_l2
+        slave: 1
+        input_type: input
+        address: 42
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 60
+
+      - name: Growatt Spannung L3
+        unique_id: growatt_voltage_l3
+        slave: 1
+        input_type: input
+        address: 46
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 60
+
+      - name: Growatt Temperatur Wechselrichter
+        unique_id: growatt_inverter_temperature
+        slave: 1
+        input_type: input
+        address: 93
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        scan_interval: 120
+
+      # -----------------------------------------------------------------------
+      # Batterie
+      # -----------------------------------------------------------------------
+      - name: Growatt Batterie Entladeleistung
+        unique_id: growatt_battery_discharge_power
+        slave: 1
+        input_type: input
+        address: 1009
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt Batterie Ladeleistung
+        unique_id: growatt_battery_charge_power
+        slave: 1
+        input_type: input
+        address: 1011
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt Batterie Spannung
+        unique_id: growatt_battery_voltage
+        slave: 1
+        input_type: input
+        address: 1013
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: V
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 60
+
+      - name: Growatt Batterie SoC
+        unique_id: growatt_battery_soc
+        slave: 1
+        input_type: input
+        address: 1014
+        data_type: uint16
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        scan_interval: 30
+
+      - name: Growatt Batterie Temperatur
+        unique_id: growatt_battery_temperature
+        slave: 1
+        input_type: input
+        address: 1040
+        data_type: uint16
+        unit_of_measurement: "°C"   # laut Praxis 1 °C/Bit, nicht 0,1 wie im Protokoll
+        device_class: temperature
+        state_class: measurement
+        scan_interval: 120
+
+      # -----------------------------------------------------------------------
+      # Leistungsflüsse am Netzanschluss (benötigen Zähler/CT am Hausanschluss)
+      # -----------------------------------------------------------------------
+      - name: Growatt Netzbezug
+        unique_id: growatt_grid_import_power
+        slave: 1
+        input_type: input
+        address: 1021
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt Netzeinspeisung
+        unique_id: growatt_grid_export_power
+        slave: 1
+        input_type: input
+        address: 1029
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      - name: Growatt Hausverbrauch
+        unique_id: growatt_local_load_power
+        slave: 1
+        input_type: input
+        address: 1037
+        data_type: uint32
+        scale: 0.1
+        precision: 0
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        scan_interval: 10
+
+      # -----------------------------------------------------------------------
+      # Energiezähler (für das HA-Energie-Dashboard) – Gesamtwerte, alle 60 s
+      # -----------------------------------------------------------------------
+      - name: Growatt PV Energie gesamt
+        unique_id: growatt_pv_energy_total
+        slave: 1
+        input_type: input
+        address: 91
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Netzbezug Energie gesamt
+        unique_id: growatt_energy_to_user_total
+        slave: 1
+        input_type: input
+        address: 1046
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Einspeisung Energie gesamt
+        unique_id: growatt_energy_to_grid_total
+        slave: 1
+        input_type: input
+        address: 1050
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Batterie Entladung Energie gesamt
+        unique_id: growatt_energy_discharge_total
+        slave: 1
+        input_type: input
+        address: 1054
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Batterie Ladung Energie gesamt
+        unique_id: growatt_energy_charge_total
+        slave: 1
+        input_type: input
+        address: 1058
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Hausverbrauch Energie gesamt
+        unique_id: growatt_local_load_energy_total
+        slave: 1
+        input_type: input
+        address: 1062
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      # Tageswerte (setzen sich um Mitternacht zurück; HA erkennt den Reset)
+      - name: Growatt PV1 Energie heute
+        unique_id: growatt_pv1_energy_today
+        slave: 1
+        input_type: input
+        address: 59               # PV1 heute; PV2 heute = 63 -> Summe als Template
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt PV2 Energie heute
+        unique_id: growatt_pv2_energy_today
+        slave: 1
+        input_type: input
+        address: 63
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Netzbezug Energie heute
+        unique_id: growatt_energy_to_user_today
+        slave: 1
+        input_type: input
+        address: 1044
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Einspeisung Energie heute
+        unique_id: growatt_energy_to_grid_today
+        slave: 1
+        input_type: input
+        address: 1048
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      - name: Growatt Hausverbrauch Energie heute
+        unique_id: growatt_local_load_energy_today
+        slave: 1
+        input_type: input
+        address: 1060
+        data_type: uint32
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        scan_interval: 60
+
+      # -----------------------------------------------------------------------
+      # Diagnose (Holding-Register, nur lesen)
+      # -----------------------------------------------------------------------
+      - name: Growatt Messquelle Netz
+        unique_id: growatt_ct_mode_code
+        slave: 1
+        input_type: holding
+        address: 1037            # 0 = CT (Kabel), 1 = CT (Funk), 2 = Zähler
+        data_type: uint16
+        scan_interval: 3600
+
+      - name: Growatt Entladestopp SoC
+        unique_id: growatt_load_first_stop_soc
+        slave: 1
+        input_type: holding
+        address: 608             # "Load First Stop-SOC": Batterie entlädt am Netz nur bis hier
+        data_type: uint16
+        unit_of_measurement: "%"
+        device_class: battery
+        scan_interval: 900
+
+      # Battery-First-Zeitfenster 1 und AC-Laden (für "Batterie halten")
+      - name: Growatt AC Laden Code
+        unique_id: growatt_ac_charge_code
+        slave: 1
+        input_type: holding
+        address: 1092            # 1 = Batterie darf im Battery-First-Fenster aus dem Netz laden
+        data_type: uint16
+        scan_interval: 60
+
+      - name: Growatt Battery First 1 Start
+        unique_id: growatt_battery_first_1_start
+        slave: 1
+        input_type: holding
+        address: 1100            # Stunde<<8 | Minute
+        data_type: uint16
+        scan_interval: 900
+
+      - name: Growatt Battery First 1 Ende
+        unique_id: growatt_battery_first_1_end
+        slave: 1
+        input_type: holding
+        address: 1101            # Stunde<<8 | Minute (5947 = 23:59)
+        data_type: uint16
+        scan_interval: 900
+
+      - name: Growatt Battery First 1 Aktiv Code
+        unique_id: growatt_battery_first_1_enable
+        slave: 1
+        input_type: holding
+        address: 1102            # 1 = Fenster aktiv -> Batterie entlädt nicht
+        data_type: uint16
+        scan_interval: 60
+
+      - name: Growatt Fehlerregister Zaehler
+        unique_id: growatt_fault_word_1007
+        slave: 1
+        input_type: input
+        address: 1007            # Bit 13 = Meter_COM_Loss
+        data_type: uint16
+        scan_interval: 300
+
+# =============================================================================
+# Abgeleitete Sensoren (Vorzeichen nach HA-Konvention)
+# =============================================================================
+template:
+  - sensor:
+      # Netz: + = Bezug, - = Einspeisung
+      - name: Growatt Netzleistung
+        unique_id: growatt_grid_power_signed
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.growatt_netzbezug') | float(0))
+             - (states('sensor.growatt_netzeinspeisung') | float(0)) }}
+        availability: >
+          {{ has_value('sensor.growatt_netzbezug')
+             and has_value('sensor.growatt_netzeinspeisung') }}
+
+      # Batterie: + = Entladen, - = Laden (HA-Konvention)
+      - name: Growatt Batterieleistung
+        unique_id: growatt_battery_power_signed
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.growatt_batterie_entladeleistung') | float(0))
+             - (states('sensor.growatt_batterie_ladeleistung') | float(0)) }}
+        availability: >
+          {{ has_value('sensor.growatt_batterie_entladeleistung')
+             and has_value('sensor.growatt_batterie_ladeleistung') }}
+
+      # Für Überschussladen später: was ginge ins Netz + was in die Batterie fließt
+      - name: Growatt PV Ueberschuss
+        unique_id: growatt_pv_surplus
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.growatt_netzeinspeisung') | float(0))
+             + (states('sensor.growatt_batterie_ladeleistung') | float(0)) }}
+        availability: >
+          {{ has_value('sensor.growatt_netzeinspeisung')
+             and has_value('sensor.growatt_batterie_ladeleistung') }}
+
+      - name: Growatt PV Energie heute gesamt
+        unique_id: growatt_pv_energy_today_sum
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {{ ((states('sensor.growatt_pv1_energie_heute') | float(0))
+             + (states('sensor.growatt_pv2_energie_heute') | float(0))) | round(1) }}
+        availability: >
+          {{ has_value('sensor.growatt_pv1_energie_heute')
+             and has_value('sensor.growatt_pv2_energie_heute') }}
+
+      - name: Growatt Status
+        unique_id: growatt_status_text
+        state: >
+          {% set m = {0: 'Warten', 1: 'Normal', 2: 'Normal', 3: 'Fehler',
+                      4: 'Firmware-Update', 5: 'Normal (Hybrid)',
+                      6: 'Normal (Hybrid)', 7: 'Normal (Hybrid)',
+                      8: 'Normal (Hybrid)'} %}
+          {{ m.get(states('sensor.growatt_status_code') | int(-1), 'Unbekannt') }}
+        availability: "{{ has_value('sensor.growatt_status_code') }}"
+
+      - name: Growatt Netzmessung
+        unique_id: growatt_ct_mode_text
+        state: >
+          {% set m = {0: 'CT (Kabel)', 1: 'CT (Funk)', 2: 'Zähler (Modbus)'} %}
+          {{ m.get(states('sensor.growatt_messquelle_netz') | int(-1), 'Unbekannt') }}
+        availability: "{{ has_value('sensor.growatt_messquelle_netz') }}"
+
+      - name: Growatt Battery First 1 Zeitfenster
+        unique_id: growatt_battery_first_1_window
+        icon: mdi:clock-outline
+        state: >
+          {% set a = states('sensor.growatt_battery_first_1_start') | int(0) %}
+          {% set e = states('sensor.growatt_battery_first_1_ende') | int(0) %}
+          {{ '%02d:%02d–%02d:%02d' | format(a // 256, a % 256, e // 256, e % 256) }}
+        availability: >
+          {{ has_value('sensor.growatt_battery_first_1_start')
+             and has_value('sensor.growatt_battery_first_1_ende') }}
+
+  - binary_sensor:
+      - name: Growatt Batterie wird gehalten
+        unique_id: growatt_battery_hold_active
+        icon: mdi:battery-lock
+        state: "{{ states('sensor.growatt_battery_first_1_aktiv_code') | int(0) == 1 }}"
+        availability: "{{ has_value('sensor.growatt_battery_first_1_aktiv_code') }}"
+
+      - name: Growatt AC Laden aktiv
+        unique_id: growatt_ac_charge_active
+        icon: mdi:transmission-tower-import
+        state: "{{ states('sensor.growatt_ac_laden_code') | int(0) == 1 }}"
+        availability: "{{ has_value('sensor.growatt_ac_laden_code') }}"
+
+      - name: Growatt Zaehlerkommunikation gestoert
+        unique_id: growatt_meter_com_loss
+        device_class: problem
+        state: >
+          {{ (states('sensor.growatt_fehlerregister_zaehler') | int(0)) // 8192 % 2 == 1 }}
+        availability: "{{ has_value('sensor.growatt_fehlerregister_zaehler') }}"
