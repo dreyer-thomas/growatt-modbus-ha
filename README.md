@@ -116,6 +116,11 @@ pytest -q
 Die Tests starten einen kleinen Modbus-Server, der einen SPH TL3 nachbildet, und prüfen
 Einrichtung, Sensorwerte, Schreibsperre, Backup-Reserve und „Batterie halten“.
 
-## Haftung
+## Lizenz und Haftung
 
-Nutzung auf eigene Verantwortung. Kein offizielles Growatt-Produkt.
+[MIT-Lizenz](LICENSE) – jeder darf den Code frei nutzen, ändern und weitergeben.
+
+Die Software wird ohne jede Gewährleistung bereitgestellt („as is“). Der Autor übernimmt
+keine Haftung für Schäden an Wechselrichter, Batterie oder sonstigen Geräten. Nutzung,
+insbesondere der Schreibfunktionen, auf eigene Verantwortung. Es besteht kein Anspruch
+auf Support oder Weiterentwicklung. Kein offizielles Growatt-Produkt.
