@@ -44,9 +44,4 @@ class GrowattBackupReserve(GrowattEntity, NumberEntity):
             raise HomeAssistantError(f"Backup-Reserve muss zwischen {BACKUP_SOC_MIN} und {BACKUP_SOC_MAX} % liegen")
         if target == self.native_value:
             return  # nichts schreiben – EEPROM schonen
-        await self.coordinator.async_write(REG_LOAD_FIRST_STOP_SOC, target)
-        await self.coordinator.async_refresh_settings()
-        if self.native_value != target:
-            raise HomeAssistantError(
-                f"Wechselrichter meldet {self.native_value} % statt {target} % – Wert wurde nicht übernommen"
-            )
+        await self.coordinator.async_write_verified(REG_LOAD_FIRST_STOP_SOC, [target])

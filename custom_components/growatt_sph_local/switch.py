@@ -5,7 +5,6 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import GrowattConfigEntry
@@ -59,18 +58,11 @@ class GrowattBatteryHold(GrowattEntity, SwitchEntity):
         if self.is_on and self._holding(REG_AC_CHARGE) == 0:
             return  # schon gehalten – nichts schreiben
         if self._holding(REG_AC_CHARGE) not in (0, None):
-            await self.coordinator.async_write(REG_AC_CHARGE, 0)
+            await self.coordinator.async_write_verified(REG_AC_CHARGE, [0])
         # Start, Ende und Aktiv gemeinsam schreiben (Function Code 16)
-        await self.coordinator.async_write_many(REG_BF1_START, [FULL_DAY_START, FULL_DAY_END, 1])
-        await self._verify(True)
+        await self.coordinator.async_write_verified(REG_BF1_START, [FULL_DAY_START, FULL_DAY_END, 1])
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         if self._holding(REG_BF1_ENABLE) == 0:
             return
-        await self.coordinator.async_write(REG_BF1_ENABLE, 0)
-        await self._verify(False)
-
-    async def _verify(self, expected: bool) -> None:
-        await self.coordinator.async_refresh_settings()
-        if self.is_on is not expected:
-            raise HomeAssistantError("Der Wechselrichter hat die Umschaltung nicht übernommen")
+        await self.coordinator.async_write_verified(REG_BF1_ENABLE, [0])

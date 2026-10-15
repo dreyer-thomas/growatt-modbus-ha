@@ -34,6 +34,9 @@ class FakeGrowatt:
         self.writes: list[tuple[int, list[int]]] = []
         self.server: asyncio.base_events.Server | None = None
         self.clients: set[asyncio.StreamWriter] = set()
+        # Wie der echte WR: geschriebene Werte erst nach N Lesezugriffen sichtbar
+        self.apply_after_reads = 0
+        self._pending: list[list] = []
         self.port = 0
         i, h = self.input, self.holding
         i[0] = 5
@@ -72,23 +75,35 @@ class FakeGrowatt:
     def _process(self, pdu: bytes) -> bytes:
         fc = pdu[0]
         if fc in (3, 4):
+            for p in self._pending:
+                p[2] -= 1
+            for addr_p, vals_p, left in [p for p in self._pending if p[2] <= 0]:
+                for k, v in enumerate(vals_p):
+                    self.holding[addr_p + k] = v
+            self._pending = [p for p in self._pending if p[2] > 0]
             addr, count = struct.unpack(">HH", pdu[1:5])
             table = self.input if fc == 4 else self.holding
             vals = [table.get(addr + k, 0) for k in range(count)]
             return struct.pack(f">BB{count}H", fc, 2 * count, *vals)
         if fc == 6:
             addr, val = struct.unpack(">HH", pdu[1:5])
-            self.holding[addr] = val
+            self._store(addr, [val])
             self.writes.append((addr, [val]))
             return pdu[:5]
         if fc == 16:
             addr, count = struct.unpack(">HH", pdu[1:5])
             vals = list(struct.unpack(f">{count}H", pdu[6:6 + 2 * count]))
-            for k, v in enumerate(vals):
-                self.holding[addr + k] = v
+            self._store(addr, vals)
             self.writes.append((addr, vals))
             return pdu[:5]
         return bytes([fc | 0x80, 1])
+
+    def _store(self, addr: int, vals: list[int]) -> None:
+        if self.apply_after_reads:
+            self._pending.append([addr, vals, self.apply_after_reads])
+        else:
+            for k, v in enumerate(vals):
+                self.holding[addr + k] = v
 
     async def start(self) -> None:
         self.server = await asyncio.start_server(self._handle, "127.0.0.1", 0)

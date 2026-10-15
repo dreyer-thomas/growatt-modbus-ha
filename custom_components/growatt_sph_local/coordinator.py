@@ -1,6 +1,7 @@
 """Datenabruf für Growatt SPH über Modbus TCP."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import timedelta
 import logging
@@ -77,6 +78,8 @@ class GrowattCoordinator(DataUpdateCoordinator[GrowattData]):
         self.device = device
         self.slave: int = entry.data[CONF_SLAVE]
         self._cycle = 0
+        # Schreiben + Zurücklesen immer nacheinander, nie überlappend
+        self._write_lock = asyncio.Lock()
 
     @property
     def host(self) -> str:
@@ -125,18 +128,39 @@ class GrowattCoordinator(DataUpdateCoordinator[GrowattData]):
                 "Geräte & Dienste → Growatt SPH (lokal) → Konfigurieren."
             )
 
-    async def async_write(self, address: int, value: int) -> None:
-        self._ensure_write_allowed()
-        try:
-            await self.client.write_register(self.slave, address, value)
-        except ModbusError as err:
-            raise HomeAssistantError(f"Schreiben von Register {address} fehlgeschlagen: {err}") from err
-        _LOGGER.info("Register %s auf %s gesetzt", address, value)
+    async def async_write_verified(self, address: int, values: list[int],
+                                   attempts: int = 6, wait: float = 0.5) -> None:
+        """Register schreiben und so lange zurücklesen, bis der Wechselrichter
+        den Wert übernommen hat (er speichert ins EEPROM, das dauert etwas).
 
-    async def async_write_many(self, address: int, values: list[int]) -> None:
+        Schreibvorgänge laufen über ein Lock nacheinander. Schnelles Mehrfach-
+        klicken (+ + +) erzeugt so keine sich überholenden Rücklesungen mehr.
+        """
         self._ensure_write_allowed()
-        try:
-            await self.client.write_registers(self.slave, address, values)
-        except ModbusError as err:
-            raise HomeAssistantError(f"Schreiben ab Register {address} fehlgeschlagen: {err}") from err
-        _LOGGER.info("Register %s.. auf %s gesetzt", address, values)
+        async with self._write_lock:
+            try:
+                if len(values) == 1:
+                    await self.client.write_register(self.slave, address, values[0])
+                else:
+                    await self.client.write_registers(self.slave, address, values)
+            except ModbusError as err:
+                raise HomeAssistantError(f"Schreiben ab Register {address} fehlgeschlagen: {err}") from err
+            _LOGGER.info("Register %s.. auf %s gesetzt", address, values)
+            current: list[int] = []
+            for attempt in range(attempts):
+                await asyncio.sleep(wait if attempt else 0.2)
+                try:
+                    current = await self.client.read_registers(self.slave, "holding", address, len(values))
+                except ModbusError as err:
+                    _LOGGER.debug("Zurücklesen von %s fehlgeschlagen: %s", address, err)
+                    continue
+                if current == values:
+                    break
+            if self.data is not None and current:
+                self.data.holding.update({address + i: v for i, v in enumerate(current)})
+                self.async_set_updated_data(self.data)
+            if current != values:
+                raise HomeAssistantError(
+                    f"Wechselrichter meldet {current} statt {values} für Register {address} – "
+                    "Wert wurde nicht übernommen"
+                )

@@ -123,3 +123,28 @@ async def test_empty_active_window_is_not_hold(hass: HomeAssistant, fake_inverte
     await hass.services.async_call("switch", "turn_on", {"entity_id": switch_id}, blocking=True)
     assert [fake_inverter.holding[a] for a in (1100, 1101, 1102)] == [0, 5947, 1]
     assert hass.states.get(switch_id).state == "on"
+
+
+async def test_delayed_apply_is_accepted(hass: HomeAssistant, fake_inverter) -> None:
+    """Der Wechselrichter übernimmt Werte verzögert – kein Fehler, sondern abwarten."""
+    await _setup(hass, fake_inverter, allow_write=True)
+    fake_inverter.apply_after_reads = 2
+    number_id = _entity_id(hass, "number", "backup_reserve")
+    await hass.services.async_call("number", "set_value", {"entity_id": number_id, "value": 14}, blocking=True)
+    assert fake_inverter.holding[608] == 14
+    assert hass.states.get(number_id).state == "14"
+
+
+async def test_rapid_clicks_do_not_fail(hass: HomeAssistant, fake_inverter) -> None:
+    """Schnelles + + + : Schreibvorgänge laufen nacheinander, letzter Wert gewinnt."""
+    import asyncio
+    await _setup(hass, fake_inverter, allow_write=True)
+    fake_inverter.apply_after_reads = 1
+    number_id = _entity_id(hass, "number", "backup_reserve")
+    await asyncio.gather(*[
+        hass.services.async_call("number", "set_value", {"entity_id": number_id, "value": v}, blocking=True)
+        for v in (21, 22, 23)
+    ])
+    await hass.async_block_till_done()
+    assert fake_inverter.holding[608] == 23
+    assert hass.states.get(number_id).state == "23"
