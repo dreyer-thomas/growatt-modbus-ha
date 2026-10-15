@@ -82,13 +82,13 @@
         "name": "Netzfrequenz"
       },
       "voltage_l1": {
-        "name": "Spannung L1"
+        "name": "Netzspannung L1-L2"
       },
       "voltage_l2": {
-        "name": "Spannung L2"
+        "name": "Netzspannung L2-L3"
       },
       "voltage_l3": {
-        "name": "Spannung L3"
+        "name": "Netzspannung L3-L1"
       },
       "inverter_temperature": {
         "name": "Temperatur Wechselrichter"

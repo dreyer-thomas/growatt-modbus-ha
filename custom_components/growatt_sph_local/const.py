@@ -37,4 +37,4 @@ STATUS_OPTIONS = ["waiting", "normal", "fault", "flash", "normal_hybrid", "unkno
 STATUS_MAP = {0: "waiting", 1: "normal", 2: "normal", 3: "fault", 4: "flash",
               5: "normal_hybrid", 6: "normal_hybrid", 7: "normal_hybrid", 8: "normal_hybrid"}
 CT_MODE_OPTIONS = ["wired_ct", "wireless_ct", "meter", "unknown"]
-CT_MODE_MAP = {0: "wired_ct", 1: "wireless_ct", 2: "meter"}
+CT_MODE_MAP = {0: "wired_ct", 1: "wireless_ct", 2: "meter", 3: "meter"}

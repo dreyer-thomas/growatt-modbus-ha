@@ -103,7 +103,7 @@ SENSORS: tuple[GrowattSensorDescription, ...] = (
     GrowattSensorDescription(key="battery_voltage", translation_key="battery_voltage",
                              value_fn=u16("input", 1013, 0.1), **V),
     GrowattSensorDescription(key="battery_temperature", translation_key="battery_temperature",
-                             value_fn=u16("input", 1040), **T),
+                             value_fn=u16("input", 1040, 0.1), **T),
     # Netz / Haus
     GrowattSensorDescription(key="grid_import_power", translation_key="grid_import_power", value_fn=u32(1021), **P),
     GrowattSensorDescription(key="grid_export_power", translation_key="grid_export_power", value_fn=u32(1029), **P),

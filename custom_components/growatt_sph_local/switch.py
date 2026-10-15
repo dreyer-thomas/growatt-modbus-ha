@@ -42,7 +42,12 @@ class GrowattBatteryHold(GrowattEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         enable = self._holding(REG_BF1_ENABLE)
-        return None if enable is None else enable == 1
+        if enable is None:
+            return None
+        # Nur "gehalten", wenn das Fenster aktiv ist UND den ganzen Tag abdeckt.
+        # Ein aktives, aber leeres Fenster (00:00–00:00) hält die Batterie nicht.
+        return enable == 1 and self._holding(REG_BF1_START) == FULL_DAY_START \
+            and self._holding(REG_BF1_END) == FULL_DAY_END
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -51,8 +56,7 @@ class GrowattBatteryHold(GrowattEntity, SwitchEntity):
         return {"zeitfenster_ganztags": full_day}
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        if self.is_on and self.extra_state_attributes["zeitfenster_ganztags"] \
-                and self._holding(REG_AC_CHARGE) == 0:
+        if self.is_on and self._holding(REG_AC_CHARGE) == 0:
             return  # schon gehalten – nichts schreiben
         if self._holding(REG_AC_CHARGE) not in (0, None):
             await self.coordinator.async_write(REG_AC_CHARGE, 0)

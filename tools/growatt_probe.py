@@ -53,9 +53,9 @@ REGISTERS: list[Reg] = [
     Reg("pv2_power", "input", 9, "u32", 0.1, "W", "PV2 Leistung"),
     Reg("ac_power", "input", 35, "u32", 0.1, "W", "AC Leistung WR"),
     Reg("grid_frequency", "input", 37, "u16", 0.01, "Hz", "Netzfrequenz"),
-    Reg("voltage_l1", "input", 38, "u16", 0.1, "V", "Spannung L1"),
-    Reg("voltage_l2", "input", 42, "u16", 0.1, "V", "Spannung L2"),
-    Reg("voltage_l3", "input", 46, "u16", 0.1, "V", "Spannung L3"),
+    Reg("voltage_l1", "input", 38, "u16", 0.1, "V", "Netzspannung L1-L2"),
+    Reg("voltage_l2", "input", 42, "u16", 0.1, "V", "Netzspannung L2-L3"),
+    Reg("voltage_l3", "input", 46, "u16", 0.1, "V", "Netzspannung L3-L1"),
     Reg("pv1_energy_today", "input", 59, "u32", 0.1, "kWh", "PV1 Energie heute"),
     Reg("pv2_energy_today", "input", 63, "u32", 0.1, "kWh", "PV2 Energie heute"),
     Reg("pv_energy_total", "input", 91, "u32", 0.1, "kWh", "PV Energie gesamt"),
@@ -68,7 +68,7 @@ REGISTERS: list[Reg] = [
     Reg("grid_import_power", "input", 1021, "u32", 0.1, "W", "Netzbezug"),
     Reg("grid_export_power", "input", 1029, "u32", 0.1, "W", "Netzeinspeisung"),
     Reg("local_load_power", "input", 1037, "u32", 0.1, "W", "Hausverbrauch"),
-    Reg("battery_temperature", "input", 1040, "u16", 1, "°C", "Batterie Temperatur"),
+    Reg("battery_temperature", "input", 1040, "u16", 0.1, "°C", "Batterie Temperatur"),
     Reg("energy_to_user_today", "input", 1044, "u32", 0.1, "kWh", "Netzbezug heute"),
     Reg("energy_to_user_total", "input", 1046, "u32", 0.1, "kWh", "Netzbezug gesamt"),
     Reg("energy_to_grid_today", "input", 1048, "u32", 0.1, "kWh", "Einspeisung heute"),
@@ -82,12 +82,12 @@ REGISTERS: list[Reg] = [
     Reg("bf1_start", "holding", 1100, "u16", 1, "", "Battery First 1 Start"),
     Reg("bf1_end", "holding", 1101, "u16", 1, "", "Battery First 1 Ende"),
     Reg("bf1_enable", "holding", 1102, "u16", 1, "", "Battery First 1 aktiv"),
-    Reg("ct_mode", "holding", 1037, "u16", 1, "", "Netzmessung (0/1=CT, 2=Zähler)"),
+    Reg("ct_mode", "holding", 1037, "u16", 1, "", "Netzmessung (Info)"),
 ]
 
 STATUS = {0: "Warten", 1: "Normal", 2: "Normal", 3: "FEHLER", 4: "Firmware-Update",
           5: "Normal (Hybrid)", 6: "Normal (Hybrid)", 7: "Normal (Hybrid)", 8: "Normal (Hybrid)"}
-CT_MODE = {0: "CT (Kabel)", 1: "CT (Funk)", 2: "Zähler (Modbus)"}
+CT_MODE = {0: "CT (Kabel)", 1: "CT (Funk)", 2: "Zähler (Modbus)", 3: "Zähler (Protokoll 3.x)"}
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +103,10 @@ def _unit_kw(func) -> str:
 
 def read_block(client, kind: str, address: int, count: int, unit: int) -> list[int]:
     func = client.read_input_registers if kind == "input" else client.read_holding_registers
-    rr = func(address, count=count, **{_unit_kw(func): unit})
+    try:
+        rr = func(address, count=count, **{_unit_kw(func): unit})
+    except Exception as err:  # pymodbus wirft je nach Version eigene Exceptions
+        raise IOError(f"{kind} {address}+{count}: keine Antwort vom Wechselrichter ({err})") from err
     if rr.isError():
         raise IOError(f"{kind} {address}+{count}: {rr}")
     return list(rr.registers)
@@ -184,26 +187,28 @@ def checks(v: dict[str, float]) -> list[str]:
         notes.append("Netzfrequenz unplausibel -> Wortreihenfolge/Adresse prüfen.")
     for ph in ("l1", "l2", "l3"):
         u = v.get(f"voltage_{ph}", 0)
-        if not (190 <= u <= 260):
-            notes.append(f"Spannung {ph.upper()} = {u} V unplausibel.")
+        if not (360 <= u <= 440):   # Leiter-Leiter-Spannung (3-phasig, ~400 V)
+            notes.append(f"Netzspannung {ph.upper()} = {u} V unplausibel (erwartet ~400 V).")
     if not (0 <= v.get("battery_soc", -1) <= 100):
         notes.append("Batterie-SoC außerhalb 0–100 %.")
     pv_sum = v.get("pv1_power", 0) + v.get("pv2_power", 0)
     if abs(pv_sum - v.get("pv_power", 0)) > max(50, 0.05 * pv_sum):
         notes.append("PV1+PV2 weicht deutlich von PV gesamt ab.")
+    if not (0 < v.get("battery_temperature", 25) < 60):
+        notes.append("Batterietemperatur unplausibel -> Skalierung prüfen.")
     if not (5 <= v.get("load_first_stop_soc", 10) <= 100):
         notes.append("Entladestopp-SoC (608) außerhalb 5–100 % -> Register auf diesem Modell anders belegt?")
-    if int(v.get("bf1_enable", 0)) == 1 and not (int(v.get("bf1_start", 0)) == 0
-                                                  and int(v.get("bf1_end", 0)) == 5947):
+    bf_start, bf_end = int(v.get("bf1_start", 0)), int(v.get("bf1_end", 0))
+    if int(v.get("bf1_enable", 0)) == 1 and bf_start != bf_end and not (bf_start == 0 and bf_end == 5947):
         notes.append("Battery-First-Fenster 1 ist schon anderweitig in Benutzung "
                      "-> vor 'Batterie halten' klären (wird überschrieben).")
     if int(v.get("ac_charge", 0)) == 1:
         notes.append("AC-Laden ist aktiv: im Battery-First-Fenster lädt die Batterie aus dem Netz.")
-    if v.get("ct_mode") is not None and int(v["ct_mode"]) not in CT_MODE:
-        notes.append(f"Unbekannter Netzmess-Modus {v['ct_mode']}.")
+
     if int(v.get("fault_word_1007", 0)) & (1 << 13):
         notes.append("Fehlerbit Meter_COM_Loss gesetzt -> Zähler kommuniziert nicht mit dem WR.")
     if v.get("grid_import_power", 0) == 0 and v.get("grid_export_power", 0) == 0 \
+            and v.get("energy_to_user_today", 0) == 0 and v.get("energy_to_grid_today", 0) == 0 \
             and v.get("local_load_power", 0) > 0:
         notes.append("Netzbezug und Einspeisung beide 0 – Zähler/CT fehlt oder nicht gekoppelt?")
     # Energiebilanz grob: PV + Bezug + Entladen ≈ Last + Einspeisung + Laden (+ Verluste)
@@ -245,11 +250,11 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.host:
-        client = ModbusTcpClient(args.host, port=args.port, timeout=5)
+        client = ModbusTcpClient(args.host, port=args.port, timeout=3, retries=1)
         target = f"{args.host}:{args.port}"
     else:
         client = ModbusSerialClient(port=args.serial, baudrate=args.baud, bytesize=8,
-                                    parity="N", stopbits=1, timeout=3)
+                                    parity="N", stopbits=1, timeout=3, retries=1)
         target = f"{args.serial} @ {args.baud} 8N1"
 
     print(f"Verbinde mit {target}, Modbus-Adresse {args.unit} …")

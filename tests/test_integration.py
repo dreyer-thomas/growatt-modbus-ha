@@ -53,7 +53,7 @@ async def test_sensors(hass: HomeAssistant, fake_inverter) -> None:
     await _setup(hass, fake_inverter, allow_write=False)
     expect = {
         "pv_power": 4200.0, "grid_power": -1850.0, "battery_power": -1450.0, "battery_soc": 63.0,
-        "grid_frequency": 50.01, "voltage_l2": 230.2, "pv_energy_today": 18.7,
+        "grid_frequency": 50.01, "voltage_l2": 405.0, "battery_temperature": 25.3, "pv_energy_today": 18.7,
         "grid_import_energy_total": 4120.3, "load_power": 800.0, "status": "normal_hybrid",
         "grid_measurement": "meter",
     }
@@ -112,3 +112,14 @@ async def test_backup_reserve_range(hass: HomeAssistant, fake_inverter) -> None:
                                        {"entity_id": _entity_id(hass, "number", "backup_reserve"), "value": 5},
                                        blocking=True)
     assert fake_inverter.holding[608] == 20
+
+
+async def test_empty_active_window_is_not_hold(hass: HomeAssistant, fake_inverter) -> None:
+    """Wie am echten Gerät: Fenster 1 aktiv, aber 00:00–00:00 -> Schalter aus."""
+    fake_inverter.holding[1102] = 1
+    await _setup(hass, fake_inverter, allow_write=True)
+    switch_id = _entity_id(hass, "switch", "battery_hold")
+    assert hass.states.get(switch_id).state == "off"
+    await hass.services.async_call("switch", "turn_on", {"entity_id": switch_id}, blocking=True)
+    assert [fake_inverter.holding[a] for a in (1100, 1101, 1102)] == [0, 5947, 1]
+    assert hass.states.get(switch_id).state == "on"

@@ -82,13 +82,13 @@
         "name": "Grid frequency"
       },
       "voltage_l1": {
-        "name": "Voltage L1"
+        "name": "Grid voltage L1-L2"
       },
       "voltage_l2": {
-        "name": "Voltage L2"
+        "name": "Grid voltage L2-L3"
       },
       "voltage_l3": {
-        "name": "Voltage L3"
+        "name": "Grid voltage L3-L1"
       },
       "inverter_temperature": {
         "name": "Inverter temperature"

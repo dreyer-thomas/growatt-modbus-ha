@@ -159,7 +159,7 @@ modbus:
         state_class: measurement
         scan_interval: 60
 
-      - name: Growatt Spannung L1
+      - name: Growatt Netzspannung L1-L2
         unique_id: growatt_voltage_l1
         slave: 1
         input_type: input
@@ -172,7 +172,7 @@ modbus:
         state_class: measurement
         scan_interval: 60
 
-      - name: Growatt Spannung L2
+      - name: Growatt Netzspannung L2-L3
         unique_id: growatt_voltage_l2
         slave: 1
         input_type: input
@@ -185,7 +185,7 @@ modbus:
         state_class: measurement
         scan_interval: 60
 
-      - name: Growatt Spannung L3
+      - name: Growatt Netzspannung L3-L1
         unique_id: growatt_voltage_l3
         slave: 1
         input_type: input
@@ -270,7 +270,9 @@ modbus:
         input_type: input
         address: 1040
         data_type: uint16
-        unit_of_measurement: "°C"   # laut Praxis 1 °C/Bit, nicht 0,1 wie im Protokoll
+        scale: 0.1                  # am SPH 5000TL3 BH-UP gemessen: 0,1 °C/Bit
+        precision: 1
+        unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
         scan_interval: 120
@@ -595,7 +597,7 @@ template:
       - name: Growatt Netzmessung
         unique_id: growatt_ct_mode_text
         state: >
-          {% set m = {0: 'CT (Kabel)', 1: 'CT (Funk)', 2: 'Zähler (Modbus)'} %}
+          {% set m = {0: 'CT (Kabel)', 1: 'CT (Funk)', 2: 'Zähler (Modbus)', 3: 'Zähler (Modbus)'} %}
           {{ m.get(states('sensor.growatt_messquelle_netz') | int(-1), 'Unbekannt') }}
         availability: "{{ has_value('sensor.growatt_messquelle_netz') }}"
 
