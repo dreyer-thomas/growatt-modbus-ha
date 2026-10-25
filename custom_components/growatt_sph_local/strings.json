@@ -177,11 +177,20 @@
     "number": {
       "backup_reserve": {
         "name": "Backup reserve"
+      },
+      "grid_charge_soc": {
+        "name": "Grid charge up to"
+      },
+      "grid_charge_rate": {
+        "name": "Grid charge power"
       }
     },
     "switch": {
       "battery_hold": {
         "name": "Hold battery"
+      },
+      "grid_charge": {
+        "name": "Grid charging"
       }
     }
   }

@@ -177,11 +177,20 @@
     "number": {
       "backup_reserve": {
         "name": "Backup-Reserve"
+      },
+      "grid_charge_soc": {
+        "name": "Netzladen bis"
+      },
+      "grid_charge_rate": {
+        "name": "Netzladeleistung"
       }
     },
     "switch": {
       "battery_hold": {
         "name": "Batterie halten"
+      },
+      "grid_charge": {
+        "name": "Netzladen"
       }
     }
   }

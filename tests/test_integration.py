@@ -148,3 +148,51 @@ async def test_rapid_clicks_do_not_fail(hass: HomeAssistant, fake_inverter) -> N
     await hass.async_block_till_done()
     assert fake_inverter.holding[608] == 23
     assert hass.states.get(number_id).state == "23"
+
+
+async def test_grid_charge(hass: HomeAssistant, fake_inverter) -> None:
+    """Netzladen: AC-Laden an + Fenster ganztags; schließt Entladestopp aus."""
+    await _setup(hass, fake_inverter, allow_write=True)
+    grid_id = _entity_id(hass, "switch", "grid_charge")
+    hold_id = _entity_id(hass, "switch", "battery_hold")
+    soc_id = _entity_id(hass, "number", "grid_charge_soc")
+    rate_id = _entity_id(hass, "number", "grid_charge_rate")
+    assert hass.states.get(grid_id).state == "off"
+    assert hass.states.get(soc_id).state == "100"
+    assert hass.states.get(rate_id).state == "100"
+
+    await hass.services.async_call("number", "set_value", {"entity_id": soc_id, "value": 50}, blocking=True)
+    await hass.services.async_call("number", "set_value", {"entity_id": rate_id, "value": 40}, blocking=True)
+    assert fake_inverter.holding[1091] == 50 and fake_inverter.holding[1090] == 40
+
+    await hass.services.async_call("switch", "turn_on", {"entity_id": grid_id}, blocking=True)
+    assert fake_inverter.holding[1092] == 1
+    assert [fake_inverter.holding[a] for a in (1100, 1101, 1102)] == [0, 5947, 1]
+    assert hass.states.get(grid_id).state == "on"
+    assert hass.states.get(hold_id).state == "off"
+
+    # Entladestopp ausschalten, während Netzladen läuft -> nichts ändern
+    n = len(fake_inverter.writes)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": hold_id}, blocking=True)
+    assert len(fake_inverter.writes) == n
+
+    # Entladestopp einschalten -> Netzladen aus, Fenster bleibt
+    await hass.services.async_call("switch", "turn_on", {"entity_id": hold_id}, blocking=True)
+    assert fake_inverter.holding[1092] == 0 and fake_inverter.holding[1102] == 1
+    assert hass.states.get(hold_id).state == "on"
+    assert hass.states.get(grid_id).state == "off"
+
+    # Netzladen wieder an und aus -> zurück zu Load First
+    await hass.services.async_call("switch", "turn_on", {"entity_id": grid_id}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": grid_id}, blocking=True)
+    assert fake_inverter.holding[1092] == 0 and fake_inverter.holding[1102] == 0
+    assert hass.states.get(grid_id).state == "off"
+    assert hass.states.get(hold_id).state == "off"
+
+
+async def test_grid_charge_blocked_without_permission(hass: HomeAssistant, fake_inverter) -> None:
+    await _setup(hass, fake_inverter, allow_write=False)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("switch", "turn_on",
+                                       {"entity_id": _entity_id(hass, "switch", "grid_charge")}, blocking=True)
+    assert fake_inverter.writes == []

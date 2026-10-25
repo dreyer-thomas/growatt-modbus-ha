@@ -55,6 +55,7 @@ class FakeGrowatt:
             h[23 + k] = v
         h[43], h[44], h[88] = 3601, 0x0203, 124
         h[608], h[1037], h[1092], h[1100], h[1101], h[1102] = 20, 2, 0, 0, 0, 0
+        h[1090], h[1091] = 100, 100
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         self.clients.add(writer)

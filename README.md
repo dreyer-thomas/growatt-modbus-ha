@@ -33,6 +33,9 @@ Growatt SPH (RS485) ──> RS485-LAN-Gateway (Modbus TCP ⇄ RTU) ──LAN─�
   der Rest bleibt für Notstrom (Register 608 „Load First Stop-SOC“)
 - **Batterie halten** (Schalter): Batterie entlädt nicht, PV lädt sie weiter – z. B. während das
   Auto lädt (Battery-First-Zeitfenster 1 auf 00:00–23:59, Netzladen aus; wie evcc „hold“)
+- **Netzladen** (Schalter): Batterie lädt aus dem Netz – bis **Netzladen bis** (10–100 %) mit
+  **Netzladeleistung** (1–100 %), z. B. vor einem angekündigten Unwetter. Schließt „Batterie
+  halten“ aus; Ausschalten führt zurück in den normalen Lastvorrang
 - Wenige Blockabfragen statt vieler Einzelanfragen, eigener schlanker Modbus-Client
   (keine pymodbus-Versionskonflikte)
 
@@ -46,7 +49,7 @@ mit der Growatt-App übereinstimmen und `Backup-Reserve` denselben Wert zeigt wi
 *Einstellungen → Geräte & Dienste → Growatt SPH (lokal) → Konfigurieren → „Schreibzugriff erlauben“*
 
 Geschrieben wird nur bei echten Änderungen; nach jedem Schreiben wird zurückgelesen.
-„Batterie halten“ belegt das **Battery-First-Zeitfenster 1** – ein dort in der App
+„Batterie halten“ und „Netzladen“ belegen das **Battery-First-Zeitfenster 1** – ein dort in der App
 eingerichtetes Fenster wird überschrieben.
 
 ## Installation (HACS)
@@ -90,7 +93,9 @@ Vorzeichen: **Netzleistung** + = Bezug, − = Einspeisung; **Batterieleistung** 
 | Input 1000–1063 | lesen | Batterie, Netz, Hausverbrauch, Energiezähler, Fehler |
 | Holding 0–44, 88 | lesen (einmalig) | Firmware, Seriennummer, Gerätetyp, Phasen, Protokoll |
 | Holding 608 | lesen/schreiben | Backup-Reserve |
-| Holding 1092 | lesen/schreiben | Netzladen im Battery-First-Fenster (wird nur auf 0 gesetzt) |
+| Holding 1090 | lesen/schreiben | Ladeleistung Battery First (%) |
+| Holding 1091 | lesen/schreiben | Battery First: laden bis SoC (%) |
+| Holding 1092 | lesen/schreiben | Netzladen (AC-Laden) im Battery-First-Fenster |
 | Holding 1100–1102 | lesen/schreiben | Battery-First-Fenster 1: Start, Ende, Aktiv |
 
 Quelle: Growatt „Modbus RTU Protocol“ V1.20/V1.24, abgeglichen mit evcc (`growatt-hybrid`)
@@ -116,11 +121,6 @@ pytest -q
 Die Tests starten einen kleinen Modbus-Server, der einen SPH TL3 nachbildet, und prüfen
 Einrichtung, Sensorwerte, Schreibsperre, Backup-Reserve und „Batterie halten“.
 
-## Lizenz und Haftung
+## Haftung
 
-[MIT-Lizenz](LICENSE) – jeder darf den Code frei nutzen, ändern und weitergeben.
-
-Die Software wird ohne jede Gewährleistung bereitgestellt („as is“). Der Autor übernimmt
-keine Haftung für Schäden an Wechselrichter, Batterie oder sonstigen Geräten. Nutzung,
-insbesondere der Schreibfunktionen, auf eigene Verantwortung. Es besteht kein Anspruch
-auf Support oder Weiterentwicklung. Kein offizielles Growatt-Produkt.
+Nutzung auf eigene Verantwortung. Kein offizielles Growatt-Produkt.
