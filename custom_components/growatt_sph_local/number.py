@@ -30,19 +30,20 @@ NUMBERS: tuple[GrowattNumberDescription, ...] = (
     GrowattNumberDescription(
         key="backup_reserve", translation_key="backup_reserve", register=REG_LOAD_FIRST_STOP_SOC,
         label="Backup-Reserve", native_min_value=BACKUP_SOC_MIN, native_max_value=BACKUP_SOC_MAX,
-        device_class=NumberDeviceClass.BATTERY,
+        device_class=NumberDeviceClass.BATTERY, native_step=5,
     ),
     # Netzladen (Battery First) lädt bis zu diesem Ladestand.
     GrowattNumberDescription(
         key="grid_charge_soc", translation_key="grid_charge_soc", register=REG_BF_STOP_SOC,
         label="Netzladen bis", native_min_value=GRID_CHARGE_SOC_MIN, native_max_value=GRID_CHARGE_SOC_MAX,
-        device_class=NumberDeviceClass.BATTERY, icon="mdi:battery-charging-high",
+        device_class=NumberDeviceClass.BATTERY, icon="mdi:battery-charging-high", native_step=5,
     ),
     # Ladeleistung im Battery-First-Betrieb in % der Nennleistung.
+    # Schrittweite 5 % für die +/−-Tasten; per Dienstaufruf geht jeder ganze Wert.
     GrowattNumberDescription(
         key="grid_charge_rate", translation_key="grid_charge_rate", register=REG_BF_CHARGE_RATE,
         label="Netzladeleistung", native_min_value=CHARGE_RATE_MIN, native_max_value=CHARGE_RATE_MAX,
-        icon="mdi:speedometer",
+        icon="mdi:speedometer", native_step=5,
     ),
 )
 
@@ -54,7 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: GrowattConfigEntry,
 
 class GrowattNumber(GrowattEntity, NumberEntity):
     entity_description: GrowattNumberDescription
-    _attr_native_step = 1
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_mode = NumberMode.BOX
     _attr_entity_category = EntityCategory.CONFIG

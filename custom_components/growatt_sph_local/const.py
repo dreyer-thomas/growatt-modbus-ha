@@ -36,7 +36,7 @@ BACKUP_SOC_MIN = 10
 BACKUP_SOC_MAX = 100
 GRID_CHARGE_SOC_MIN = 10
 GRID_CHARGE_SOC_MAX = 100
-CHARGE_RATE_MIN = 1
+CHARGE_RATE_MIN = 5
 CHARGE_RATE_MAX = 100
 
 STATUS_OPTIONS = ["waiting", "normal", "fault", "flash", "normal_hybrid", "unknown"]

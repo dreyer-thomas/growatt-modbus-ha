@@ -34,7 +34,7 @@ Growatt SPH (RS485) ──> RS485-LAN-Gateway (Modbus TCP ⇄ RTU) ──LAN─�
 - **Batterie halten** (Schalter): Batterie entlädt nicht, PV lädt sie weiter – z. B. während das
   Auto lädt (Battery-First-Zeitfenster 1 auf 00:00–23:59, Netzladen aus; wie evcc „hold“)
 - **Netzladen** (Schalter): Batterie lädt aus dem Netz – bis **Netzladen bis** (10–100 %) mit
-  **Netzladeleistung** (1–100 %), z. B. vor einem angekündigten Unwetter. Schließt „Batterie
+  **Netzladeleistung** (5–100 %), z. B. vor einem angekündigten Unwetter. Schließt „Batterie
   halten“ aus; Ausschalten führt zurück in den normalen Lastvorrang
 - Wenige Blockabfragen statt vieler Einzelanfragen, eigener schlanker Modbus-Client
   (keine pymodbus-Versionskonflikte)
