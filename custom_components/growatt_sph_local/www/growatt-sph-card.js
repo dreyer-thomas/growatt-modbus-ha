@@ -1,14 +1,17 @@
 /*
  * Growatt SPH Card – Dashboard-Karte für die Integration "Growatt SPH (lokal)".
  *
- * Ansichten: Übersicht (Haus-Grafik, Ladestand, Leistung), Heute & Verlauf
- * (Tagessummen, Monatsbalken aus der Langzeitstatistik), Steuerung (Entladestopp,
- * Netzladen, Backup-Reserve) und Gerät (Temperaturen, Netz, Strings, Firmware).
+ * Eine Karte zeigt genau eine Ansicht, gewählt mit `view` (im Karten-Editor auswählbar):
+ *   overview – Haus-Grafik, Ladestand, Leistung (Standard)
+ *   today    – Tagessummen, Monatsbalken aus der Langzeitstatistik
+ *   control  – Entladestopp, Netzladen, Backup-Reserve
+ *   device   – Temperaturen, Netz, Strings, Firmware
+ * Für mehrere Ansichten einfach mehrere Karten anlegen.
  *
  * Die Entitäten werden über das Entitätsregister gefunden (Plattform
  * growatt_sph_local, translation_key) – die minimale Konfiguration ist
  *   type: custom:growatt-sph-card
- * Optional: title, capacity (nutzbare Batteriekapazität in kWh, Standard 7.5),
+ * Optional: view, title, capacity (nutzbare Batteriekapazität in kWh, Standard 7.5),
  *           device_id (bei mehreren Wechselrichtern).
  *
  * Gestaltung angelehnt an die Karten von BavarianData (Chris Krammer, MIT),
@@ -16,7 +19,13 @@
  * MIT-Lizenz, Nutzung auf eigene Verantwortung.
  */
 
-const GSC_VERSION = "0.2.0";
+const GSC_VERSION = "0.2.1";
+const GSC_VIEWS = {
+  overview: "Übersicht",
+  today: "Heute & Verlauf",
+  control: "Steuerung",
+  device: "Gerät",
+};
 const GSC_PLATFORM = "growatt_sph_local";
 const GSC_ACTIVE_W = 30; // darunter gilt die Batterie als ruhend
 
@@ -67,7 +76,7 @@ const gscEsc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;"
 
 class GrowattSphCard extends HTMLElement {
   static getStubConfig() {
-    return { capacity: 7.5 };
+    return { view: "overview", capacity: 7.5 };
   }
 
   static getConfigElement() {
@@ -76,7 +85,11 @@ class GrowattSphCard extends HTMLElement {
 
   setConfig(config) {
     this._config = { capacity: 7.5, ...(config || {}) };
-    this._view = this._view || "overview";
+    const view = this._config.view || "overview";
+    if (!GSC_VIEWS[view]) {
+      throw new Error(`Unbekannte Ansicht „${view}“ – erlaubt: ${Object.keys(GSC_VIEWS).join(", ")}`);
+    }
+    this._view = view;
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
       this.shadowRoot.addEventListener("click", (ev) => this._onClick(ev));
@@ -314,13 +327,6 @@ class GrowattSphCard extends HTMLElement {
     return `<div class="tile">${gscIcon(icon, cls)}<div><div class="tv">${value}</div><div class="tl">${gscEsc(label)}</div></div></div>`;
   }
 
-  _row(view, icon, title, sub) {
-    return `<button class="row" data-view="${view}">
-      <span class="ri">${gscIcon(icon)}</span>
-      <span class="rt"><span class="rh">${gscEsc(title)}</span><span class="rs">${gscEsc(sub)}</span></span>
-      ${gscIcon("chevron", "chev")}</button>`;
-  }
-
   _viewOverview() {
     const m = this._model();
     const h = this._headline(m);
@@ -359,16 +365,16 @@ class GrowattSphCard extends HTMLElement {
           ${this._tile(m.mode === "charge" ? "batteryCharging" : "battery", this._power(batVal), batLabel, m.mode === "charge" ? "green" : m.mode === "discharge" ? "amber" : "")}
         </div>
       </div>
-      <div class="rows">
-        ${this._row("today", "chart", "Heute & Verlauf", `${this._kwh(pvToday)} Solar · ${autark === null ? "–" : this._fmt(autark, 0)} % autark`)}
-        ${this._row("control", "tune", "Steuerung", ctrlSub)}
-        ${this._row("device", "chip", "Gerät", devSub)}
+      <div class="foot">
+        <span>${gscIcon("chart")}Heute ${this._kwh(pvToday)} Solar · ${autark === null ? "–" : this._fmt(autark, 0)} % autark</span>
+        <span>${gscIcon("tune")}${gscEsc(ctrlSub)}</span>
+        <span>${gscIcon("chip")}${gscEsc(devSub)}</span>
       </div>`;
   }
 
-  _subHead(title, sub) {
-    return `<div class="subhead"><button class="back" data-view="overview" aria-label="Zurück">${gscIcon("back")}</button>
-      <div><div class="sh">${gscEsc(title)}</div><div class="ss">${gscEsc(sub)}</div></div></div>`;
+  _subHead(title, sub, icon) {
+    return `<div class="subhead"><span class="hi">${gscIcon(icon)}</span>
+      <div><div class="sh">${gscEsc(this._config.title || title)}</div><div class="ss">${gscEsc(sub)}</div></div></div>`;
   }
 
   _stat(value, unit, label) {
@@ -393,7 +399,7 @@ class GrowattSphCard extends HTMLElement {
     const selfUse = pv ? Math.max(0, Math.min(100, (1 - (exp ?? 0) / pv) * 100)) : null;
     this._ensureMonth();
     return `
-      ${this._subHead("Heute & Verlauf", new Date().toLocaleDateString(this._lang, { weekday: "long", day: "numeric", month: "long" }))}
+      ${this._subHead("Heute & Verlauf", new Date().toLocaleDateString(this._lang, { weekday: "long", day: "numeric", month: "long" }), "chart")}
       <div class="pad">
         <div class="stats3">
           ${this._stat(this._fmt(pv, 1), "kWh", "Solar")}
@@ -512,7 +518,7 @@ class GrowattSphCard extends HTMLElement {
     const m = this._model();
     const mode = m.gridCharge ? "Netzladen" : m.hold ? "Entladestopp" : "Lastvorrang (normal)";
     return `
-      ${this._subHead("Steuerung", `Betrieb: ${mode}`)}
+      ${this._subHead("Steuerung", `Betrieb: ${mode}`, "tune")}
       <div class="pad">
         ${this._toggle("battery_hold", "Entladestopp", "Batterie entlädt nicht, PV lädt weiter", "lock")}
         ${this._toggle("grid_charge", "Netzladen", `lädt aus dem Netz bis ${m.gcSoc} %`, "tower")}
@@ -539,7 +545,7 @@ class GrowattSphCard extends HTMLElement {
     const cycles = discharged !== null ? discharged / m.cap : null;
     const meterLoss = this._on("meter_com_loss");
     return `
-      ${this._subHead("Gerät", [dev.model, dev.serial_number].filter(Boolean).join(" · ") || "Growatt SPH")}
+      ${this._subHead("Gerät", [dev.model, dev.serial_number].filter(Boolean).join(" · ") || "Growatt SPH", "chip")}
       <div class="pad">
         <div class="tiles">
           ${this._tile("thermo", `${this._fmt(this._num("inverter_temperature"), 1)} °C`, "Wechselrichter")}
@@ -570,14 +576,8 @@ class GrowattSphCard extends HTMLElement {
 
   // ---------- Bedienung ----------
   _onClick(ev) {
-    const el = ev.composedPath().find((n) => n.dataset && (n.dataset.view || n.dataset.toggle || n.dataset.step || n.dataset.month));
+    const el = ev.composedPath().find((n) => n.dataset && (n.dataset.toggle || n.dataset.step || n.dataset.month));
     if (!el) return;
-    if (el.dataset.view) {
-      this._view = el.dataset.view;
-      this._last = "";
-      this._paint();
-      return;
-    }
     if (el.dataset.month) {
       const d = this._month;
       this._month = new Date(d.getFullYear(), d.getMonth() + parseInt(el.dataset.month, 10), 1);
@@ -671,9 +671,6 @@ const GSC_STYLES = `
   .tile .ic { fill: var(--gsc-fg2); } .tile .ic.amber { fill: var(--gsc-amber); } .tile .ic.green { fill: var(--gsc-green); }
   .tv { font-size: 18px; font-weight: 700; } .tl { color: var(--gsc-fg2); font-size: 14px; }
 
-  .rows { border-top: 1px solid var(--divider-color, #e1e6ee); padding: 6px 8px 8px; }
-  .row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px; border-radius: 14px; }
-  .row:hover, .row:focus-visible { background: var(--gsc-tile); outline: none; }
   .ri { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--gsc-tile); }
   .ri .ic { fill: var(--gsc-fg2); }
   .rt { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -681,8 +678,11 @@ const GSC_STYLES = `
   .chev { fill: var(--gsc-fg2); }
 
   .subhead { display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid var(--divider-color, #e1e6ee); }
-  .back { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--gsc-tile); }
-  .back .ic { fill: var(--gsc-fg); }
+  .hi { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--gsc-tile); flex: none; }
+  .hi .ic { fill: var(--gsc-fg2); }
+  .foot { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--divider-color, #e1e6ee); padding: 14px 20px 16px; color: var(--gsc-fg2); font-size: 14px; }
+  .foot span { display: flex; align-items: center; gap: 10px; }
+  .foot .ic { width: 18px; height: 18px; fill: var(--gsc-fg2); }
   .sh { font-size: 20px; font-weight: 700; } .ss { color: var(--gsc-fg2); font-size: 14px; }
   .pad { padding: 14px 16px; }
   .divider { border-top: 1px solid var(--divider-color, #e1e6ee); }
@@ -738,13 +738,17 @@ class GrowattSphCardEditor extends HTMLElement {
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     const c = this._config || {};
     this.shadowRoot.innerHTML = `
-      <style>label{display:block;margin:10px 0 4px;font-weight:600}input{width:100%;box-sizing:border-box;padding:8px;font:inherit}
+      <style>label{display:block;margin:10px 0 4px;font-weight:600}input,select{width:100%;box-sizing:border-box;padding:8px;font:inherit}
       .hint{color:var(--secondary-text-color);font-size:13px;margin-top:4px}</style>
-      <label for="t">Titel</label><input id="t" value="${gscEsc(c.title || "")}" placeholder="Gerätename">
+      <label for="v">Ansicht</label>
+      <select id="v">${Object.entries(GSC_VIEWS).map(([k, n]) =>
+        `<option value="${k}" ${(c.view || "overview") === k ? "selected" : ""}>${gscEsc(n)}</option>`).join("")}</select>
+      <label for="t">Titel</label><input id="t" value="${gscEsc(c.title || "")}" placeholder="Standard je nach Ansicht">
       <label for="c">Nutzbare Batteriekapazität (kWh)</label><input id="c" type="number" step="0.1" min="1" value="${gscEsc(c.capacity ?? 7.5)}">
       <div class="hint">Für Restlaufzeit, „nutzbar bis Reserve“ und Vollzyklen.</div>`;
     const fire = () => {
       const cfg = { ...this._config };
+      cfg.view = this.shadowRoot.getElementById("v").value;
       const t = this.shadowRoot.getElementById("t").value.trim();
       const cap = parseFloat(this.shadowRoot.getElementById("c").value);
       if (t) cfg.title = t; else delete cfg.title;
@@ -753,6 +757,7 @@ class GrowattSphCardEditor extends HTMLElement {
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: cfg }, bubbles: true, composed: true }));
     };
     this.shadowRoot.getElementById("t").addEventListener("change", fire);
+    this.shadowRoot.getElementById("v").addEventListener("change", fire);
     this.shadowRoot.getElementById("c").addEventListener("change", fire);
   }
 }
@@ -764,7 +769,7 @@ if (!window.customCards.some((c) => c.type === "growatt-sph-card")) {
   window.customCards.push({
     type: "growatt-sph-card",
     name: "Growatt SPH Karte",
-    description: "Wechselrichter, Batterie, Tagessummen und Steuerung der Integration Growatt SPH (lokal).",
+    description: "Wechselrichter der Integration Growatt SPH (lokal) – Ansicht wählbar: Übersicht, Heute & Verlauf, Steuerung oder Gerät.",
     preview: true,
   });
 }

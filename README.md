@@ -42,12 +42,15 @@ Growatt SPH (RS485) ──> RS485-LAN-Gateway (Modbus TCP ⇄ RTU) ──LAN─�
 ## Dashboard-Karte
 
 Die Integration bringt eine eigene Karte mit, die sich beim Start selbst als Dashboard-Ressource
-einträgt – nichts manuell hinzufügen. Im Dashboard: **Karte hinzufügen → „Growatt SPH Karte“**, oder
+einträgt – nichts manuell hinzufügen. Im Dashboard: **Karte hinzufügen → „Growatt SPH Karte“**.
+Jede Karte zeigt eine Ansicht, die im Karten-Editor gewählt wird – für mehrere Ansichten
+einfach mehrere Karten anlegen:
 
 ```yaml
 type: custom:growatt-sph-card
+view: overview    # overview | today | control | device
 capacity: 7.5     # nutzbare Batteriekapazität in kWh (für Restlaufzeit und Zyklen)
-title: Wechselrichter   # optional, sonst Gerätename
+title: Wechselrichter   # optional
 ```
 
 | Übersicht | Heute & Verlauf | Steuerung | Gerät |
