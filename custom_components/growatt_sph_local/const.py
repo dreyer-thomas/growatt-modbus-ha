@@ -4,6 +4,10 @@ from __future__ import annotations
 DOMAIN = "growatt_sph_local"
 MANUFACTURER = "Growatt"
 
+# Mitgelieferte Dashboard-Karte
+CARD_FILENAME = "growatt-sph-card.js"
+CARD_URL = f"/{DOMAIN}/{CARD_FILENAME}"
+
 CONF_SLAVE = "slave"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_ALLOW_WRITE = "allow_write"

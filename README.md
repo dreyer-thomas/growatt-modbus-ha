@@ -39,6 +39,30 @@ Growatt SPH (RS485) ──> RS485-LAN-Gateway (Modbus TCP ⇄ RTU) ──LAN─�
 - Wenige Blockabfragen statt vieler Einzelanfragen, eigener schlanker Modbus-Client
   (keine pymodbus-Versionskonflikte)
 
+## Dashboard-Karte
+
+Die Integration bringt eine eigene Karte mit, die sich beim Start selbst als Dashboard-Ressource
+einträgt – nichts manuell hinzufügen. Im Dashboard: **Karte hinzufügen → „Growatt SPH Karte“**, oder
+
+```yaml
+type: custom:growatt-sph-card
+capacity: 7.5     # nutzbare Batteriekapazität in kWh (für Restlaufzeit und Zyklen)
+title: Wechselrichter   # optional, sonst Gerätename
+```
+
+| Übersicht | Heute & Verlauf | Steuerung | Gerät |
+|---|---|---|---|
+| ![Übersicht](screenshots/card-overview.png) | ![Heute](screenshots/card-today.png) | ![Steuerung](screenshots/card-control.png) | ![Gerät](screenshots/card-device.png) |
+
+- **Übersicht:** Hausgrafik mit Energiefluss (Tag/Nacht), Statuszeile mit Restlaufzeit
+  („reicht bis ~06:30“, „voll um 15:40“), Ladestand mit Reserve- und Zielmarke, PV/Haus/Netz/Batterie
+- **Heute & Verlauf:** Tagessummen, Autarkie, Eigenverbrauch, Monatsbalken aus der Langzeitstatistik
+- **Steuerung:** Entladestopp, Netzladen (Ziel, Leistung), Backup-Reserve in 5-%-Schritten
+- **Gerät:** Temperaturen, Netzspannung und -frequenz, Strings, Zählerkommunikation, Firmware, Vollzyklen
+
+Gestaltung angelehnt an die Karten von [BavarianData](https://github.com/JustChr/BavarianData)
+(MIT); die automatische Registrierung als Lovelace-Ressource ist von dort übernommen.
+
 ## Sicherheit beim Schreiben
 
 Nach der Einrichtung ist der **Schreibzugriff aus**. Backup-Reserve und „Batterie halten“

@@ -8,6 +8,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import CONF_SLAVE
 from .coordinator import GrowattCoordinator, async_read_device_info
+from .frontend import async_register_card
 from .modbus_client import ModbusError, ModbusTcpClient
 
 PLATFORMS: list[Platform] = [
@@ -33,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: GrowattConfigEntry) -> b
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_register_card(hass)
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_options))
     return True
 

@@ -196,3 +196,12 @@ async def test_grid_charge_blocked_without_permission(hass: HomeAssistant, fake_
         await hass.services.async_call("switch", "turn_on",
                                        {"entity_id": _entity_id(hass, "switch", "grid_charge")}, blocking=True)
     assert fake_inverter.writes == []
+
+
+async def test_card_is_served(hass: HomeAssistant, fake_inverter, hass_client) -> None:
+    """Die mitgelieferte Dashboard-Karte wird unter /growatt_sph_local/ ausgeliefert."""
+    await _setup(hass, fake_inverter, allow_write=False)
+    client = await hass_client()
+    resp = await client.get("/growatt_sph_local/growatt-sph-card.js")
+    assert resp.status == 200
+    assert "growatt-sph-card" in await resp.text()
