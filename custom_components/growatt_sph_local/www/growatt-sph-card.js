@@ -19,7 +19,7 @@
  * MIT-Lizenz, Nutzung auf eigene Verantwortung.
  */
 
-const GSC_VERSION = "0.2.2";
+const GSC_VERSION = "0.2.3";
 const GSC_VIEWS = {
   overview: "Übersicht",
   today: "Heute & Verlauf",
@@ -316,8 +316,8 @@ class GrowattSphCard extends HTMLElement {
           <rect class="bat" x="300" y="112" width="34" height="64" rx="5"/>
           <rect x="304" y="${172 - batH}" width="26" height="${batH}" rx="2" fill="${batColor}"/>
           <rect class="bat-cap" x="310" y="106" width="14" height="6" rx="2"/>
-          <!-- Flüsse -->
-          ${night ? "" : `<path class="${flow(pvOn)}" d="M205 64 C205 40 300 30 330 46" style="--c:#f0b429"/>`}
+          <!-- Flüsse: Pfade laufen jeweils von der Quelle zum Ziel (Sonne→Dach, Netz→Haus, Batterie→Haus); .rev dreht um -->
+          ${night ? "" : `<path class="${flow(pvOn)}" d="M326 52 L224 80" style="--c:#f0b429"/>`}
           <path class="${flow(gridIn || gridOut, gridOut)}" d="M72 150 C100 150 120 150 140 150" style="--c:#7f8fa6"/>
           <path class="${flow(batIn || batOut, batIn)}" d="M300 150 C290 150 280 150 270 150" style="--c:${batIn ? "#2fa864" : "#f0a030"}"/>
           <line class="ground" x1="20" y1="177" x2="380" y2="177"/>
