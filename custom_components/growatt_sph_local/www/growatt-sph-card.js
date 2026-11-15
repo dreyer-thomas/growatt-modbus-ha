@@ -19,7 +19,7 @@
  * MIT-Lizenz, Nutzung auf eigene Verantwortung.
  */
 
-const GSC_VERSION = "0.2.3";
+const GSC_VERSION = "0.2.4";
 const GSC_VIEWS = {
   overview: "Übersicht",
   today: "Heute & Verlauf",
@@ -338,8 +338,12 @@ class GrowattSphCard extends HTMLElement {
       </div>`;
   }
 
-  _tile(icon, value, label, cls = "") {
-    return `<div class="tile">${gscIcon(icon, cls)}<div><div class="tv">${value}</div><div class="tl">${gscEsc(label)}</div></div></div>`;
+  // Kachel; mit key öffnet ein Klick den Detaildialog von HA (Verlauf der letzten 24 h).
+  _tile(icon, value, label, cls = "", key = null) {
+    const inner = `${gscIcon(icon, cls)}<div><div class="tv">${value}</div><div class="tl">${gscEsc(label)}</div></div>`;
+    return key && this._id(key)
+      ? `<button class="tile click" data-more="${key}" aria-label="${gscEsc(label)}: Verlauf anzeigen">${inner}</button>`
+      : `<div class="tile">${inner}</div>`;
   }
 
   _viewOverview() {
@@ -368,16 +372,16 @@ class GrowattSphCard extends HTMLElement {
         <div class="head">${gscEsc(h.title)}</div>
         <div class="sub">${gscEsc(h.sub)}</div>
         <div class="big">
-          <div><span class="bn">${this._fmt(m.soc, 0)}</span><span class="bu">%</span><div class="bl">Ladestand</div></div>
+          <button class="soc click" data-more="battery_soc" aria-label="Ladestand: Verlauf anzeigen"><span class="bn">${this._fmt(m.soc, 0)}</span><span class="bu">%</span><div class="bl">Ladestand</div></button>
           <div class="right"><span class="bn2">${this._kwh(usable, 1)}</span><div class="bl">nutzbar bis Reserve</div></div>
         </div>
         ${this._bar(m)}
         <div class="barlbl"><span>${gscEsc(left)}</span><span>${gscEsc(right)}</span></div>
         <div class="tiles">
-          ${this._tile("sun", this._power(m.pv), "Solar jetzt", "amber")}
-          ${this._tile("home", this._power(m.load), "Haus")}
-          ${this._tile("tower", this._power(gridVal), gridLabel, m.exp > GSC_ACTIVE_W ? "green" : "")}
-          ${this._tile(m.mode === "charge" ? "batteryCharging" : "battery", this._power(batVal), batLabel, m.mode === "charge" ? "green" : m.mode === "discharge" ? "amber" : "")}
+          ${this._tile("sun", this._power(m.pv), "Solar jetzt", "amber", "pv_power")}
+          ${this._tile("home", this._power(m.load), "Haus", "", "load_power")}
+          ${this._tile("tower", this._power(gridVal), gridLabel, m.exp > GSC_ACTIVE_W ? "green" : "", "grid_power")}
+          ${this._tile(m.mode === "charge" ? "batteryCharging" : "battery", this._power(batVal), batLabel, m.mode === "charge" ? "green" : m.mode === "discharge" ? "amber" : "", "battery_power")}
         </div>
       </div>
       <div class="foot">
@@ -392,8 +396,9 @@ class GrowattSphCard extends HTMLElement {
       <div><div class="sh">${gscEsc(this._config.title || title)}</div><div class="ss">${gscEsc(sub)}</div></div></div>`;
   }
 
-  _stat(value, unit, label) {
-    return `<div class="stat"><div class="sv">${value}${unit ? `<span class="su"> ${unit}</span>` : ""}</div><div class="sl">${gscEsc(label)}</div></div>`;
+  _stat(value, unit, label, key = null) {
+    const click = key && this._id(key);
+    return `<${click ? `button data-more="${key}"` : "div"} class="stat${click ? " click" : ""}"><div class="sv">${value}${unit ? `<span class="su"> ${unit}</span>` : ""}</div><div class="sl">${gscEsc(label)}</div></${click ? "button" : "div"}>`;
   }
 
   _split(title, a, b, la, lb, ca, cb, unit = "kWh") {
@@ -417,8 +422,8 @@ class GrowattSphCard extends HTMLElement {
       ${this._subHead("Heute & Verlauf", new Date().toLocaleDateString(this._lang, { weekday: "long", day: "numeric", month: "long" }), "chart")}
       <div class="pad">
         <div class="stats3">
-          ${this._stat(this._fmt(pv, 1), "kWh", "Solar")}
-          ${this._stat(this._fmt(load, 1), "kWh", "Verbrauch")}
+          ${this._stat(this._fmt(pv, 1), "kWh", "Solar", "pv_energy_today")}
+          ${this._stat(this._fmt(load, 1), "kWh", "Verbrauch", "load_energy_today")}
           ${this._stat(this._fmt(autark, 0), "%", "Autarkie")}
         </div>
         ${this._split("Woher kam der Strom", Math.max(0, (load ?? 0) - (imp ?? 0)), imp, "Eigen", "Netz", "#2fa864", "#9aa3ad")}
@@ -563,10 +568,10 @@ class GrowattSphCard extends HTMLElement {
       ${this._subHead("Gerät", [dev.model, dev.serial_number].filter(Boolean).join(" · ") || "Growatt SPH", "chip")}
       <div class="pad">
         <div class="tiles">
-          ${this._tile("thermo", `${this._fmt(this._num("inverter_temperature"), 1)} °C`, "Wechselrichter")}
-          ${this._tile("thermo", `${this._fmt(this._num("battery_temperature"), 1)} °C`, "Batterie")}
-          ${this._tile("bolt", `${this._fmt(this._num("battery_voltage"), 1)} V`, "Batteriespannung")}
-          ${this._tile("wave", `${this._fmt(this._num("grid_frequency"), 2)} Hz`, "Netzfrequenz")}
+          ${this._tile("thermo", `${this._fmt(this._num("inverter_temperature"), 1)} °C`, "Wechselrichter", "", "inverter_temperature")}
+          ${this._tile("thermo", `${this._fmt(this._num("battery_temperature"), 1)} °C`, "Batterie", "", "battery_temperature")}
+          ${this._tile("bolt", `${this._fmt(this._num("battery_voltage"), 1)} V`, "Batteriespannung", "", "battery_voltage")}
+          ${this._tile("wave", `${this._fmt(this._num("grid_frequency"), 2)} Hz`, "Netzfrequenz", "", "grid_frequency")}
         </div>
         <div class="kvs">
           ${this._kv("Status", gscEsc(GSC_STATUS[m.status] || m.status || "–"), m.fault ? "bad" : "")}
@@ -591,8 +596,15 @@ class GrowattSphCard extends HTMLElement {
 
   // ---------- Bedienung ----------
   _onClick(ev) {
-    const el = ev.composedPath().find((n) => n.dataset && (n.dataset.toggle || n.dataset.step || n.dataset.month));
+    const el = ev.composedPath().find((n) => n.dataset && (n.dataset.more || n.dataset.toggle || n.dataset.step || n.dataset.month));
     if (!el) return;
+    if (el.dataset.more) {
+      const entityId = this._id(el.dataset.more);
+      if (entityId) {
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+      }
+      return;
+    }
     if (el.dataset.month) {
       const d = this._month;
       this._month = new Date(d.getFullYear(), d.getMonth() + parseInt(el.dataset.month, 10), 1);
@@ -670,6 +682,7 @@ const GSC_STYLES = `
   .sub { color: var(--gsc-fg2); margin-top: 4px; }
   .big { display: flex; justify-content: space-between; align-items: flex-end; margin: 18px 0 12px; }
   .big .right { text-align: right; }
+  .soc { text-align: left; border-radius: 12px; padding: 2px 6px; margin: -2px -6px; }
   .bn { font-size: 52px; font-weight: 800; line-height: 1; } .bu { font-size: 20px; color: var(--gsc-fg2); margin-left: 3px; }
   .bn2 { font-size: 28px; font-weight: 800; } .bl { color: var(--gsc-fg2); margin-top: 6px; }
   .bar { position: relative; height: 14px; background: var(--gsc-track); border-radius: 999px; }
@@ -682,7 +695,10 @@ const GSC_STYLES = `
   .mark.target { background: var(--gsc-blue); }
   .barlbl { display: flex; justify-content: space-between; color: var(--gsc-fg2); font-size: 14px; margin-top: 10px; }
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 12px; }
-  .tile { display: flex; align-items: center; gap: 14px; background: var(--gsc-tile); border-radius: 16px; padding: 14px 16px; }
+  .tile { display: flex; align-items: center; gap: 14px; background: var(--gsc-tile); border-radius: 16px; padding: 14px 16px; text-align: left; width: 100%; }
+  .click { cursor: pointer; transition: background .15s; }
+  .click:hover, .click:focus-visible { background: color-mix(in srgb, var(--gsc-fg) 12%, transparent); outline: none; }
+  .stat.click { text-align: left; width: 100%; }
   .tile .ic { fill: var(--gsc-fg2); } .tile .ic.amber { fill: var(--gsc-amber); } .tile .ic.green { fill: var(--gsc-green); }
   .tv { font-size: 18px; font-weight: 700; } .tl { color: var(--gsc-fg2); font-size: 14px; }
 
