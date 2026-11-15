@@ -19,7 +19,7 @@
  * MIT-Lizenz, Nutzung auf eigene Verantwortung.
  */
 
-const GSC_VERSION = "0.2.4";
+const GSC_VERSION = "0.2.5";
 const GSC_VIEWS = {
   overview: "Übersicht",
   today: "Heute & Verlauf",
@@ -308,7 +308,11 @@ class GrowattSphCard extends HTMLElement {
           <!-- Haus -->
           <path class="house" d="M140 176 V112 L205 66 L270 112 V176 Z"/>
           <path class="roof" d="M128 116 L205 58 L282 116"/>
-          <g class="pv"><path d="M168 92 L205 64 L242 92 L232 99 L205 79 L178 99 Z"/></g>
+          <!-- PV-Module außen auf der rechten Dachfläche (Sonnenseite) -->
+          <g class="pv">
+            <path d="M219 63.5 L272.9 104.1 L278.3 96.9 L224.4 56.3 Z"/>
+            <path class="cell" d="M237 77 L242.4 69.8 M254.9 90.6 L260.3 83.4"/>
+          </g>
           <rect class="door" x="194" y="140" width="22" height="36" rx="2"/>
           <rect class="win" x="156" y="126" width="22" height="18" rx="2"/>
           <rect class="win" x="232" y="126" width="22" height="18" rx="2"/>
@@ -317,7 +321,7 @@ class GrowattSphCard extends HTMLElement {
           <rect x="304" y="${172 - batH}" width="26" height="${batH}" rx="2" fill="${batColor}"/>
           <rect class="bat-cap" x="310" y="106" width="14" height="6" rx="2"/>
           <!-- Flüsse: Pfade laufen jeweils von der Quelle zum Ziel (Sonne→Dach, Netz→Haus, Batterie→Haus); .rev dreht um -->
-          ${night ? "" : `<path class="${flow(pvOn)}" d="M326 52 L224 80" style="--c:#f0b429"/>`}
+          ${night ? "" : `<path class="${flow(pvOn)}" d="M326 52 L258 73" style="--c:#f0b429"/>`}
           <path class="${flow(gridIn || gridOut, gridOut)}" d="M72 150 C100 150 120 150 140 150" style="--c:#7f8fa6"/>
           <path class="${flow(batIn || batOut, batIn)}" d="M300 150 C290 150 280 150 270 150" style="--c:${batIn ? "#2fa864" : "#f0a030"}"/>
           <line class="ground" x1="20" y1="177" x2="380" y2="177"/>
@@ -663,7 +667,8 @@ const GSC_STYLES = `
   .scene { display: block; width: 100%; height: auto; padding-top: 40px; }
   .scene .house { fill: #f4f6fa; stroke: #b7c2d3; stroke-width: 1.5; }
   .scene .roof { fill: none; stroke: #5a6577; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
-  .scene .pv path { fill: #2d4f8f; stroke: #8fb0e6; stroke-width: 1; }
+  .scene .pv path { fill: #2d4f8f; stroke: #9cbcf0; stroke-width: 1.2; stroke-linejoin: round; }
+  .scene .pv path.cell { fill: none; stroke: #9cbcf0; stroke-width: 1; }
   .scene .door { fill: #8a6a4f; } .scene .win { fill: #bcd3ee; stroke: #8ea6c4; }
   .night .scene .win { fill: #ffd97a; } .night .scene .house { fill: #c9d2e0; }
   .scene .bat { fill: #e9edf3; stroke: #8a96a8; stroke-width: 2; } .scene .bat-cap { fill: #8a96a8; }
