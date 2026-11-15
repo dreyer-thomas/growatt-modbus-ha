@@ -19,7 +19,7 @@
  * MIT-Lizenz, Nutzung auf eigene Verantwortung.
  */
 
-const GSC_VERSION = "0.2.1";
+const GSC_VERSION = "0.2.2";
 const GSC_VIEWS = {
   overview: "Übersicht",
   today: "Heute & Verlauf",
@@ -185,9 +185,23 @@ class GrowattSphCard extends HTMLElement {
     return sameDay ? this._clock(t) : `${t.toLocaleDateString(this._lang, { weekday: "short" })} ${this._clock(t)}`;
   }
 
-  _ago(iso) {
-    if (!iso) return "";
-    const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  // Jüngster Zeitpunkt, zu dem irgendein Wert der Integration geschrieben wurde. Ein einzelner
+  // Sensor taugt dafür nicht: bleibt sein Wert gleich (PV nachts 0 W), ändert sich last_updated nicht.
+  _freshest() {
+    let best = null;
+    for (const id of Object.values(this._map || {})) {
+      const st = this._hass.states[id];
+      if (!st || st.state === "unavailable") continue;
+      const t = Date.parse(st.last_reported || st.last_updated || "");
+      if (Number.isFinite(t) && (best === null || t > best)) best = t;
+    }
+    return best;
+  }
+
+  _ago(ts) {
+    if (ts === null || ts === undefined || ts === "") return "";
+    const t = typeof ts === "number" ? ts : new Date(ts).getTime();
+    const s = Math.max(0, Math.round((Date.now() - t) / 1000));
     if (s < 60) return `vor ${s} s`;
     const m = Math.round(s / 60);
     return m < 60 ? `vor ${m} min` : `vor ${Math.round(m / 60)} h`;
@@ -266,8 +280,9 @@ class GrowattSphCard extends HTMLElement {
   }
 
   _hero(m) {
-    const st = this._st("pv_power");
-    const ok = !m.fault && m.soc !== null;
+    const fresh = this._freshest();
+    const stale = fresh !== null && Date.now() - fresh > 120000;
+    const ok = !m.fault && m.soc !== null && !stale;
     const flow = (on, reverse) => `flow ${on ? "on" : ""} ${reverse ? "rev" : ""}`;
     const pvOn = m.pv > GSC_ACTIVE_W;
     const night = !pvOn;
@@ -282,7 +297,7 @@ class GrowattSphCard extends HTMLElement {
       <div class="hero ${night ? "night" : ""}">
         <div class="hero__top">
           <div class="hero__title">${gscEsc(this._title())}</div>
-          <div class="pill"><span class="dot ${ok ? "" : "bad"}"></span>${gscEsc(this._ago(st?.last_updated))}</div>
+          <div class="pill" title="Letzte Daten vom Wechselrichter"><span class="dot ${ok ? "" : "bad"}"></span>${gscEsc(this._ago(fresh))}</div>
         </div>
         <svg class="scene" viewBox="0 0 400 200" role="img" aria-label="Energiefluss">
           ${night
